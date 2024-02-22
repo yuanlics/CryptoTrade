@@ -34,7 +34,7 @@ def update_memory(trial_log_path: str, env_configs: List[Dict[str, Any]]) -> Lis
             else:
                 memory: List[str] = env['memory']
             reflection_query: str = _generate_reflection_query(env_logs[i], memory)
-            reflection: str = get_chat(reflection_query) # type: ignore  # DEBUG check
+            reflection: str = get_chat(prompt=reflection_query, model='gpt-3.5-turbo') # type: ignore  # DEBUG check
             env_configs[i]['memory'] += [reflection]
                 
     return env_configs

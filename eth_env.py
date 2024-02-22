@@ -3,20 +3,18 @@ import pandas as pd
 import re
 import random
 
-class ETHTradingEnv:
-    def __init__(self, file_path='data/ETH_price.csv'):
-        self.data = pd.read_csv(file_path)
-        self.total_steps = min(100, len(self.data))
-        self.starting_cash = 10000
-        self.cash = self.starting_cash
-        self.close_net_worth_history = [self.starting_cash]
-        self.eth_held = 0
-        # self.current_step = 0
-        self.current_step = random.randint(0, self.total_steps - 100)  # random starting time
-        self.done = False
+# PATH = 'data/ETH_price.csv'
+PATH = 'data/eth_daily.csv'
 
-    # act for today
-    def step(self, action):
+
+class ETHTradingEnv:
+    def __init__(self, file_path=PATH):
+        self.data = pd.read_csv(file_path)
+        self.total_steps = len(self.data)
+        self.starting_cash = 10000
+        self.reset()
+
+    def step(self, action):  # act for today
         raw_action = action
         if type(action) == str:
             actions = re.findall(r"[-+]?\d*\.\d+|\d+", action)
@@ -36,7 +34,7 @@ class ETHTradingEnv:
         today = self.data.iloc[self.current_step]
         next_day = self.data.iloc[self.current_step + 1]
         open_price = today['open']
-        close_price = today['close']
+        close_price = today['close'] if 'close' in today else next_day['open']
         next_open_price = next_day['open']
         
         if -1 <= action < 0 and self.eth_held > 0:  # Sell ETH
@@ -66,15 +64,17 @@ class ETHTradingEnv:
             'raw_action': raw_action,
             'actual_action': action,
             'starting_cash': self.starting_cash,
+            'ref_all_in': self.starting_cash / self.starting_price * close_price,
         }
         return close_state, reward, self.done, info
-
+    
     def reset(self):
         self.cash = self.starting_cash
         self.close_net_worth_history = [self.starting_cash]
         self.eth_held = 0
         # self.current_step = 0
         self.current_step = random.randint(0, self.total_steps - 100)  # random starting time
+        self.starting_price = self.data.iloc[self.current_step]['open']
         self.done = False
         day = self.data.iloc[self.current_step]
         open_price = day['open']
@@ -96,12 +96,13 @@ class ETHTradingEnv:
 
 if __name__ == "__main__":
     env = ETHTradingEnv()
-    state, info = env.reset()
-    print(f"init state: {state}, info: {info}")
 
-    actions = [0, 1, -1, 0.5, -0.5]
-    for action in actions:
-        # the agent receives last state and reward, takes an action, and receives new state and reward.
-        # state = observation
-        state, reward, done, info = env.step(action)
-        print(f"action: {action} -> state: {state}, reward: {reward}, done: {done}, info: {info}")
+    for _ in range(5):
+        state, info = env.reset()
+        print(f"\ninit state: {state}, info: {info}, step: {env.current_step}")
+        actions = [0, 1, -1, 0.5, -0.5]
+        for action in actions:
+            # the agent receives last state and reward, takes an action, and receives new state and reward.
+            # state = observation
+            state, reward, done, info = env.step(action)
+            print(f"action: {action} -> state: {state}, reward: {reward}, done: {done}, info: {info}")
