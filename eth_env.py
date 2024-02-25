@@ -3,16 +3,41 @@ import pandas as pd
 import re
 import random
 
-# PATH = 'data/ETH_price.csv'
-PATH = 'data/eth_daily.csv'
+# PATH = 'data/eth_daily.csv'
+PATH = 'data/eth_202401.csv'
 
 
+# 2024-01
 class ETHTradingEnv:
     def __init__(self, file_path=PATH):
         self.data = pd.read_csv(file_path)
         self.total_steps = len(self.data)
         self.starting_cash = 10000
         self.reset()
+
+    def reset(self):
+        self.cash = self.starting_cash
+        self.close_net_worth_history = [self.starting_cash]
+        self.eth_held = 0
+        self.current_step = 0  # start from the beginning
+        # self.current_step = random.randint(0, self.total_steps)  # random starting time
+        self.starting_price = self.data.iloc[self.current_step]['open']
+        self.done = False
+        day = self.data.iloc[self.current_step]
+        open_price = day['open']
+
+        state = {
+            'cash': self.cash,
+            'eth_held': self.eth_held,
+            'open_price': open_price,
+        }
+        net_worth = self.cash + self.eth_held * open_price
+        info = {
+            'net_worth': net_worth,
+        }
+        done = False
+        reward = 0
+        return state, reward, done, info
 
     def step(self, action):  # act for today
         raw_action = action
@@ -50,7 +75,7 @@ class ETHTradingEnv:
         self.close_net_worth_history.append(close_net_worth)
         
         self.current_step += 1
-        if self.current_step >= self.total_steps:
+        if self.current_step >= self.total_steps - 1:
             self.done = True
         
         close_state = {
@@ -68,41 +93,24 @@ class ETHTradingEnv:
         }
         return close_state, reward, self.done, info
     
-    def reset(self):
-        self.cash = self.starting_cash
-        self.close_net_worth_history = [self.starting_cash]
-        self.eth_held = 0
-        # self.current_step = 0
-        self.current_step = random.randint(0, self.total_steps - 100)  # random starting time
-        self.starting_price = self.data.iloc[self.current_step]['open']
-        self.done = False
-        day = self.data.iloc[self.current_step]
-        open_price = day['open']
-
-        state = {
-            'cash': self.cash,
-            'eth_held': self.eth_held,
-            'open_price': open_price,
-        }
-        net_worth = self.cash + self.eth_held * open_price
-        info = {
-            'net_worth': net_worth,
-        }
-        return state, info
-    
     def close(self):
         pass
-    
+
 
 if __name__ == "__main__":
     env = ETHTradingEnv()
 
-    for _ in range(5):
-        state, info = env.reset()
-        print(f"\ninit state: {state}, info: {info}, step: {env.current_step}")
-        actions = [0, 1, -1, 0.5, -0.5]
-        for action in actions:
-            # the agent receives last state and reward, takes an action, and receives new state and reward.
-            # state = observation
+    N_TRIALS = 1
+    ACTIONS = np.arange(-1, 1.1, 0.2).tolist()
+    # ACTIONS = [1]
+    for _ in range(N_TRIALS):
+        state, reward, done, info = env.reset()
+        print(f"init state: {state}, info: {info}, step: {env.current_step}")
+        # the agent receives last state and reward, takes an action, and receives new state and reward.
+        # state = observation
+        while not done:
+            action = random.choice(ACTIONS)
             state, reward, done, info = env.step(action)
             print(f"action: {action} -> state: {state}, reward: {reward}, done: {done}, info: {info}")
+        print()
+        
