@@ -34,6 +34,7 @@ class ETHTradingEnv:
         net_worth = self.cash + self.eth_held * open_price
         info = {
             'net_worth': net_worth,
+            'date': day['snapped_at'],
         }
         done = False
         reward = 0
@@ -90,6 +91,7 @@ class ETHTradingEnv:
             'actual_action': action,
             'starting_cash': self.starting_cash,
             'ref_all_in': self.starting_cash / self.starting_price * close_price,
+            'date': today['snapped_at'],
         }
         return close_state, reward, self.done, info
     
@@ -98,19 +100,16 @@ class ETHTradingEnv:
 
 
 if __name__ == "__main__":
+    # the agent receives last state and reward, takes an action, and receives new state and reward.
+    # state = observation
     env = ETHTradingEnv()
-
-    N_TRIALS = 1
     ACTIONS = np.arange(-1, 1.1, 0.2).tolist()
     # ACTIONS = [1]
-    for _ in range(N_TRIALS):
-        state, reward, done, info = env.reset()
-        print(f"init state: {state}, info: {info}, step: {env.current_step}")
-        # the agent receives last state and reward, takes an action, and receives new state and reward.
-        # state = observation
-        while not done:
-            action = random.choice(ACTIONS)
-            state, reward, done, info = env.step(action)
-            print(f"action: {action} -> state: {state}, reward: {reward}, done: {done}, info: {info}")
-        print()
-        
+    state, reward, done, info = env.reset()
+    print(f"init state: {state}, info: {info}, step: {env.current_step}")
+    while not done:
+        action = random.choice(ACTIONS)
+        state, reward, done, info = env.step(action)
+        print(f"action: {action} -> state: {state}, reward: {reward}, done: {done}, info: {info}")
+    profit = state['close_net_worth'] - info['starting_cash']
+    print(f"final profit: {profit}")
