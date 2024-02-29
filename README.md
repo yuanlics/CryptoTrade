@@ -46,6 +46,7 @@ gemma-2b-fp16 example
 ]
 ```
 
+
 # prompt for trading bot.
 
 Model: gpt3.5
