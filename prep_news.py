@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "7"
 
 import json
 import re
@@ -14,21 +14,30 @@ import time
 RAW_DIR = 'data/gnews_raw'  # 1216 articles in 2024-01
 OUTPUT_DIR = 'data/gnews'
 NEWS_TIME_FMT = "%a, %d %b %Y %H:%M:%S %Z"
-MAX_TOKENS = 512
+MAX_TOKENS = 256
+MIN_TOKENS = 128
 CONTEXT_LENGTH = 4096
 # DTYPE = torch.bfloat16  # half vram
 DTYPE = torch.float16
 # DTYPE = torch.float32  # full vram
+# MODEL_ID = "gpt-3.5-turbo"  # openai api call
 # MODEL_ID = "meta-llama/Llama-2-13b-chat-hf"  # fp32: 18G*3, 14min/news; fp16: 14G*2, 3.5min/news
-MODEL_ID = "meta-llama/Llama-2-7b-chat-hf"  # fp32: 16G*2, 5.2min/news; fp16: 18G*1, 1min/news
+MODEL_ID = "meta-llama/Llama-2-7b-chat-hf"  # fp32: 16G*2, 5.2min/news; fp16: 16G*1, 1min/news
 # MODEL_ID = "gg-hf/gemma-7b-it"  # fp16: 20G*1, 2min/news
 # MODEL_ID = "gg-hf/gemma-2b-it"  # fp16: 10G*1, 0.3min/news
+# MODEL_ID = "facebook/bart-large-cnn"
+# ID = 29  # DEBUG
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-generator = pipeline(task='text-generation', model=MODEL_ID, device_map="auto", max_new_tokens=MAX_TOKENS, torch_dtype=DTYPE)
+if 'Llama' in MODEL_ID or 'gemma' in MODEL_ID:
+    TASK = 'gen'
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+    generator = pipeline(task='text-generation', model=MODEL_ID, device_map="auto", max_new_tokens=MAX_TOKENS, torch_dtype=DTYPE)
+elif 'bart' in MODEL_ID:
+    TASK = 'sum'
+    summarizer = pipeline("summarization", model=MODEL_ID, device="cuda")
 
 
-def llm_chat(raw_prompt):
+def get_generation(raw_prompt):
     chat = [
         { "role": "user", "content": raw_prompt},
     ]
@@ -37,7 +46,6 @@ def llm_chat(raw_prompt):
     if len(prompt_tokenized) > CONTEXT_LENGTH - MAX_TOKENS:
         print(f"Prompt too long: {len(prompt_tokenized)} tokens. Skip news.")
         return None
-
     result = generator(prompt)
     response = result[0]['generated_text']
     if response.startswith(prompt):
@@ -45,23 +53,29 @@ def llm_chat(raw_prompt):
     return response
 
 
+def get_summary(raw_prompt):
+    result = summarizer(raw_prompt, max_length=MAX_TOKENS, min_length=MIN_TOKENS, do_sample=False)
+    response = result[0]['summary_text']
+    return response
+
+
 # 5 W's and H: Who? What? When? Where? Why? How?
 # news summary including 5 W's and H, sentiment => a structured news
 # e.g. Where: America; What: Apple releases VisionPro; Sentiment: positive.
 def format_news(item):
-    aspects = ["Who", "What", "When", "Where", "Why", "How", "Sentiment"]
-    summaries = []
-    for aspect in aspects:
-        prompt = f'''A financial news could be analyzed using elements including {', '.join(aspects)}. The article is given below:
-Title: {item["title"]}.
-Content: {item["content"]}.
-Briefly summarize the news only in the aspect of {aspect}.'''
-        result = llm_chat(prompt)
+    if TASK == 'gen':
+        prompt = f'Summarize the following financial news. Title: {item["title"]}. Content: {item["content"]}.'
+        result = get_generation(prompt)
         if result is None:
             return None
-        summaries.append(result)
-    summary = {aspect: summary for aspect, summary in zip(aspects, summaries)}
-    return summary
+        summary = {'id': item['id'], 'title': item['title'], 'summary': result}
+        return summary
+    
+    if TASK == 'sum':
+        prompt = f'Title: {item["title"]}. Content: {item["content"]}.'
+        result = get_summary(prompt)
+        summary = {'id': item['id'], 'title': item['title'], 'summary': result}
+        return summary
 
 
 def get_raw_file_names(start_ymd, end_ymd):
@@ -92,9 +106,8 @@ def get_raw_file_names(start_ymd, end_ymd):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gpu", type=str, default='3')  # '3,4,5'
-    parser.add_argument("--start_ymd", type=str, default='2024-01-05')
-    parser.add_argument("--end_ymd", type=str, default='2024-01-30')
+    parser.add_argument("--start_ymd", type=str, default='2024-1-21')  # inclusive
+    parser.add_argument("--end_ymd", type=str, default='2024-1-30')  # inclusive
     # args = parser.parse_args()
     args = parser.parse_args([])
 
@@ -120,6 +133,8 @@ if __name__ == "__main__":
             item_day = parsed_time.day
             if item_day != day:
                 continue
+            # if ID != 29: continue  # DEBUG
+
             news_cnt += 1
             tock = time.time()
             print(f"Processing news #{news_cnt}. File: {file_name}. ID: {ID}. Last time: {tock - tick:.2f}s.")
