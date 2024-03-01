@@ -9,6 +9,8 @@ import json
 PATH_PRICE = 'data/eth_202401.csv'
 DIR_NEWS  = 'data/gnews'
 PRICE_TIME_FMT = "%Y-%m-%d %H:%M:%S UTC"
+GAS_LIMITS = 21000
+GAS_PRICE = 70
 
 
 class ETHTradingEnv:
@@ -28,7 +30,7 @@ class ETHTradingEnv:
         self.done = False
         starting_day = self.data.iloc[self.current_step]
         open_price = starting_day['open']
-        news = []  # no news for first action day
+        news = ''  # no news for first action day
 
         state = {
             'cash': self.cash,
@@ -76,7 +78,7 @@ class ETHTradingEnv:
         date = today['snapped_at']
         parsed_time = datetime.strptime(date, PRICE_TIME_FMT)
         year, month, day = parsed_time.year, parsed_time.month, parsed_time.day
-        news_path = f"{DIR_NEWS}/{year}-{month}-{day}.json"
+        news_path = f"{DIR_NEWS}/{year}-{str(month).zfill(2)}-{str(day).zfill(2)}.json"
         news = json.load(open(news_path))
         
         if -1 <= action < 0 and self.eth_held > 0:  # Sell ETH
@@ -88,7 +90,7 @@ class ETHTradingEnv:
             self.eth_held += cash_to_spend / open_price
             self.cash -= cash_to_spend
         
-        close_net_worth = self.cash + self.eth_held * close_price
+        close_net_worth = self.cash + self.eth_held * close_price - GAS_LIMITS * GAS_PRICE * 10 ** (-9) * abs(action) * self.eth_held # cost transaction fee
         self.close_net_worth_history.append(close_net_worth)
         
         self.current_step += 1
@@ -127,7 +129,7 @@ if __name__ == "__main__":
         state, reward, done, info = env.step(action)
         print(f"> action: {action}")
         print_state = {k: v for k, v in state.items() if k != 'today_news'}
-        print_state['today_news'] = [{'time': item['time'], 'title': item['title']} for item in state['today_news']]
+        # print_state['today_news'] = [{'time': item['time'], 'title': item['title']} for item in state['today_news']]
         print(f"state: {print_state}, reward: {reward}, done: {done}, info: {info} \n")
     profit = state['close_net_worth'] - info['starting_cash']
     print(f"final profit: {profit}")
