@@ -1,5 +1,12 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "7"
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--gpu", type=str, default='5')
+parser.add_argument("--start_ymd", type=str, default='2024-1-1')  # inclusive
+parser.add_argument("--end_ymd", type=str, default='2024-1-10')  # inclusive
+args = parser.parse_args()
+# args = parser.parse_args([])
+os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
 import json
 import re
@@ -7,7 +14,6 @@ from datetime import datetime
 from transformers import pipeline, set_seed
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
-import argparse
 import time
 
 
@@ -16,6 +22,7 @@ OUTPUT_DIR = 'data/gnews'
 NEWS_TIME_FMT = "%a, %d %b %Y %H:%M:%S %Z"
 MAX_TOKENS = 256
 MIN_TOKENS = 128
+WORD_PER_TOKEN = 0.75
 CONTEXT_LENGTH = 4096
 # DTYPE = torch.bfloat16  # half vram
 DTYPE = torch.float16
@@ -64,7 +71,8 @@ def get_summary(raw_prompt):
 # e.g. Where: America; What: Apple releases VisionPro; Sentiment: positive.
 def format_news(item):
     if TASK == 'gen':
-        prompt = f'Summarize the following financial news. Title: {item["title"]}. Content: {item["content"]}.'
+        # prompt = f'Summarize the following financial news in less than {int(MAX_TOKENS * WORD_PER_TOKEN)} words. Title: {item["title"]}. Content: {item["content"]}.'
+        prompt = f'Summarize the following financial news in less than {MAX_TOKENS} tokens. Title: {item["title"]}. Content: {item["content"]}.'
         result = get_generation(prompt)
         if result is None:
             return None
@@ -105,12 +113,6 @@ def get_raw_file_names(start_ymd, end_ymd):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--start_ymd", type=str, default='2024-1-21')  # inclusive
-    parser.add_argument("--end_ymd", type=str, default='2024-1-30')  # inclusive
-    # args = parser.parse_args()
-    args = parser.parse_args([])
-
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
     news_cnt = 0
