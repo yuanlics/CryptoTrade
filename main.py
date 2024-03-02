@@ -2,7 +2,8 @@ import os
 import json
 import argparse
 
-from eth_trial import run_trial
+# from eth_trial import run_trial
+from eth_trial_modified import run_trial
 from generate_reflections import update_memory
 
 from typing import Any, List, Dict
@@ -20,7 +21,7 @@ def get_args():
     parser.add_argument("--model", type=str, help="The model to use. One of `gpt-4`, `gpt-3.5-turbo`")
 
     # args = parser.parse_args()
-    debug_args = '--num_trials 5 --num_envs 5 --run_name eth_test_run --use_memory --model gpt-3.5-turbo'.split(' ')
+    debug_args = '--num_trials 5 --num_envs 5 --run_name eth_test_run_modified --use_memory --model gpt-3.5-turbo'.split(' ')
     args = parser.parse_args(debug_args)
 
     assert args.num_trials > 0, "Number of trials should be positive"
@@ -61,6 +62,7 @@ def main(args) -> None:
     # print start status to user
     if args.is_resume:
         print(f"""
+    
     -----
     Resuming run with the following parameters:
     Run name: {logging_dir}

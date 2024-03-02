@@ -1,0 +1,52 @@
+[
+    {
+        "name": "env_0",
+        "memory": [
+            "Plan:\nIn my previous attempts, I have been making decisions based on the market trend without considering any specific analysis or indicators. Moving forward, I will conduct a thorough technical analysis of the market before making any trading decisions. I will also set clear stop-loss and take-profit levels to manage risk effectively. Additionally, I will keep a close eye on any relevant news or events that could impact the price of ETH. This more strategic approach should help me make more informed and successful trading decisions.",
+            "In my next attempt, I will focus on implementing a more disciplined risk management strategy. I will set specific stop-loss and take-profit levels based on my technical analysis to minimize potential losses and secure profits. Additionally, I will closely monitor any news or events that could impact the price of ETH and adjust my trading strategy accordingly. By incorporating these elements into my decision-making process, I aim to improve my overall trading performance and increase the likelihood of success.",
+            "In my next attempt, I will focus on implementing a more disciplined risk management strategy by setting specific stop-loss and take-profit levels based on my technical analysis. I will also conduct a thorough analysis of the market trends and indicators before making any trading decisions. Additionally, I will closely monitor any news or events that could impact the price of ETH and adjust my trading strategy accordingly. By incorporating these elements into my decision-making process, I aim to improve my overall trading performance and increase the likelihood of success."
+        ],
+        "is_success": false,
+        "skip": false
+    },
+    {
+        "name": "env_1",
+        "memory": [
+            "In my previous attempts, I have been making decisions based on the market trend without considering any specific analysis or indicators. Moving forward, I will conduct a thorough technical analysis of the market before making any trading decisions. I will also set clear stop-loss and take-profit levels to manage risk effectively. Additionally, I will keep a close eye on any relevant news or events that could impact the price of ETH. This comprehensive approach will help me make more informed and strategic trading decisions. \n\nAction: 0.75",
+            "Plan: In my next attempt, I will conduct a detailed technical analysis of the market to identify key support and resistance levels, trends, and potential entry and exit points. I will also utilize relevant indicators such as moving averages, RSI, and MACD to confirm my analysis and make more informed trading decisions. Additionally, I will set clear stop-loss and take-profit levels to manage risk effectively and avoid emotional trading. Staying updated on relevant news and events that could impact the price of ETH will also be a crucial part of my strategy. By following this comprehensive approach, I aim to improve my trading performance and increase the likelihood of success. \n\nAction: 0.75",
+            "In my next attempt, I will continue to conduct a detailed technical analysis of the market to identify key support and resistance levels, trends, and potential entry and exit points. I will also utilize relevant indicators such as moving averages, RSI, and MACD to confirm my analysis and make more informed trading decisions. Additionally, I will set clear stop-loss and take-profit levels to manage risk effectively and avoid emotional trading. Staying updated on relevant news and events that could impact the price of ETH will also be a crucial part of my strategy. By following this comprehensive approach, I aim to improve my trading performance and increase the likelihood of success. \n\nAction: 0.75"
+        ],
+        "is_success": false,
+        "skip": false
+    },
+    {
+        "name": "env_2",
+        "memory": [
+            "In my previous attempts, I have been making inconsistent decisions that have led to a decrease in my net worth. Moving forward, I need to focus on a more strategic approach. I should conduct thorough research on market trends and news related to ETH to make informed decisions. Additionally, I should set clear goals and stick to a predetermined trading strategy to avoid impulsive actions. Diversifying my portfolio and regularly monitoring my investments will also be crucial in achieving success in trading ETH.\n\nAction: -0.25",
+            "In my new plan, I will focus on conducting thorough research on market trends and news related to ETH before making any trading decisions. I will set clear goals and stick to a predetermined trading strategy to avoid impulsive actions. Additionally, I will diversify my portfolio and regularly monitor my investments to ensure I am making informed and strategic decisions. This approach will help me increase my chances of success in trading ETH.\n\nAction: 0.75",
+            "In my new plan, I will continue to focus on conducting thorough research on market trends and news related to ETH before making any trading decisions. I will set clear goals and stick to a predetermined trading strategy to avoid impulsive actions. Additionally, I will diversify my portfolio and regularly monitor my investments to ensure I am making informed and strategic decisions. To address my past mistake of making inconsistent decisions, I will also implement a stop-loss strategy to limit potential losses and protect my capital. This comprehensive approach will help me increase my chances of success in trading ETH.\n\nAction: 0.80"
+        ],
+        "is_success": false,
+        "skip": false
+    },
+    {
+        "name": "env_3",
+        "memory": [
+            "In my previous attempts, I have been making decisions based on the market trend without considering any specific analysis or indicators. Moving forward, I will conduct a thorough technical analysis of the market before making any trading decisions. I will also set clear stop-loss and take-profit levels to manage risk effectively. Additionally, I will keep a close eye on any relevant news or events that could impact the price of ETH. This comprehensive approach will help me make more informed and strategic trading decisions in the future.\n\nAction: -0.75",
+            "In my next attempt, I will implement the following new plan:\n\n1. Conduct a thorough technical analysis of the market to identify key support and resistance levels, trends, and potential entry and exit points.\n2. Set clear stop-loss and take-profit levels for each trade to manage risk effectively and protect my capital.\n3. Stay updated on relevant news and events that could impact the price of ETH, and adjust my trading strategy accordingly.\n4. Consider using technical indicators such as moving averages, RSI, and MACD to confirm trading signals and improve decision-making.\n5. Practice patience and discipline in executing trades, avoiding impulsive decisions based solely on market trends.\n\nBy following this new plan, I aim to make more informed and strategic trading decisions and improve my overall performance in the market.",
+            "In my next attempt, I will implement the following new plan:\n\n1. Conduct a thorough technical analysis of the market to identify key support and resistance levels, trends, and potential entry and exit points.\n2. Set clear stop-loss and take-profit levels for each trade to manage risk effectively and protect my capital.\n3. Stay updated on relevant news and events that could impact the price of ETH, and adjust my trading strategy accordingly.\n4. Consider using technical indicators such as moving averages, RSI, and MACD to confirm trading signals and improve decision-making.\n5. Practice patience and discipline in executing trades, avoiding impulsive decisions based solely on market trends.\n\nBy following this new plan, I aim to make more informed and strategic trading decisions and improve my overall performance in the market. \n\nAction: -0.75"
+        ],
+        "is_success": false,
+        "skip": false
+    },
+    {
+        "name": "env_4",
+        "memory": [
+            "In the previous attempts, I made the mistake of not consistently evaluating the market conditions before making my decisions. Moving forward, I will conduct thorough research on the latest news and trends related to ETH before taking any action. I will also set specific criteria for when to buy or sell ETH based on this information, rather than relying solely on intuition. Additionally, I will consider implementing stop-loss orders to minimize potential losses in case the market moves against my position.",
+            "In my new plan, I will start by conducting thorough research on the latest news and trends related to ETH before making any decisions. I will set specific criteria for when to buy or sell ETH based on this information, rather than relying solely on intuition. Additionally, I will implement stop-loss orders to minimize potential losses in case the market moves against my position. I will also consider diversifying my portfolio to reduce risk and increase potential returns.",
+            "In my new plan, I will continue to conduct thorough research on the latest news and trends related to ETH before making any decisions. I will set specific criteria for when to buy or sell ETH based on this information, rather than relying solely on intuition. Additionally, I will implement stop-loss orders to minimize potential losses in case the market moves against my position. To address my past mistake of not consistently evaluating market conditions, I will also regularly monitor the market throughout the day and adjust my strategy accordingly. Finally, I will consider diversifying my portfolio further to reduce risk and increase potential returns."
+        ],
+        "is_success": false,
+        "skip": false
+    }
+]
