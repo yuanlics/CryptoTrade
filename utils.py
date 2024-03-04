@@ -30,7 +30,7 @@ def get_chat(prompt: str, model: Model, temperature: float = 0.0, max_tokens: in
     response = client.chat.completions.create(model=model,
     messages=messages,
     max_tokens=max_tokens,
-    stop=stop_strs,
+    # stop=stop_strs,
     temperature=temperature)
     return response.choices[0].message.content
 

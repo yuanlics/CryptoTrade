@@ -15,6 +15,7 @@ from transformers import pipeline, set_seed
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import time
+from datetime import date, timedelta
 
 
 RAW_DIR = 'data/gnews_raw'  # 1216 articles in 2024-01
@@ -76,39 +77,47 @@ def format_news(item):
         result = get_generation(prompt)
         if result is None:
             return None
-        summary = {'id': item['id'], 'title': item['title'], 'summary': result}
+        summary = {'title': item['title'], 'summary': result}
         return summary
     
     if TASK == 'sum':
         prompt = f'Title: {item["title"]}. Content: {item["content"]}.'
         result = get_summary(prompt)
-        summary = {'id': item['id'], 'title': item['title'], 'summary': result}
+        summary = {'title': item['title'], 'summary': result}
         return summary
 
 
 def get_raw_file_names(start_ymd, end_ymd):
-    start_ymd = args.start_ymd
-    end_ymd = args.end_ymd
-    start_year, start_month, start_day = map(int, start_ymd.split('-'))
-    end_year, end_month, end_day = map(int, end_ymd.split('-'))
-    raw_file_names = []
-    for year in range(start_year, end_year + 1):
-        for month in range(1, 13):
-            for day in range(1, 32):
-                if year == start_year and month < start_month:
-                    continue
-                if year == end_year and month > end_month:
-                    continue
-                if year == start_year and month == start_month and day < start_day:
-                    continue
-                if year == end_year and month == end_month and day > end_day:
-                    continue
-                if month in [4, 6, 9, 11] and day == 31:
-                    continue
-                if month == 2 and day > 28:  # TODO leap year
-                    continue
-                raw_file_name = f"{year}-{month}-{day}.json"
-                raw_file_names.append(raw_file_name)
+    start_date = datetime.strptime(start_ymd, '%Y-%m-%d')
+    end_date = datetime.strptime(end_ymd, '%Y-%m-%d')
+    delta = end_date - start_date
+    for i in range(delta.days + 1):
+        date = start_date + timedelta(days=i)
+        year, month, day = date.year, date.month, date.day
+        raw_file_name = f"{year}-{month}-{day}.json"
+        raw_file_names.append(raw_file_name)
+    # start_ymd = args.start_ymd
+    # end_ymd = args.end_ymd
+    # start_year, start_month, start_day = map(int, start_ymd.split('-'))
+    # end_year, end_month, end_day = map(int, end_ymd.split('-'))
+    # raw_file_names = []
+    # for year in range(start_year, end_year + 1):
+    #     for month in range(1, 13):
+    #         for day in range(1, 32):
+    #             if year == start_year and month < start_month:
+    #                 continue
+    #             if year == end_year and month > end_month:
+    #                 continue
+    #             if year == start_year and month == start_month and day < start_day:
+    #                 continue
+    #             if year == end_year and month == end_month and day > end_day:
+    #                 continue
+    #             if month in [4, 6, 9, 11] and day == 31:
+    #                 continue
+    #             if month == 2 and day > 28:  # missing leap year
+    #                 continue
+    #             raw_file_name = f"{year}-{month}-{day}.json"
+    #             raw_file_names.append(raw_file_name)
     return raw_file_names
 
 
@@ -152,50 +161,3 @@ if __name__ == "__main__":
         with open(output_file_path, 'w') as f:
             json.dump(output_data, f, indent=4)
         # break  # DEBUG
-
-
-
-
-
-
-# BUG: 4k context length too short. llama7b-fp16, 2024-1-22, id 55. 
-# SOLUTION: skip; truncate; split
-# This is a friendly reminder - the current text generation call will exceed the model's predefined maximum length (4096). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
-# Traceback (most recent call last):
-#   File "preprocess_news.py", line 77, in <module>
-#     output_item = format_news(item)
-#   File "preprocess_news.py", line 51, in format_news
-#     result = llm_chat(prompt)
-#   File "preprocess_news.py", line 33, in llm_chat
-#     result = generator(prompt)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/pipelines/text_generation.py", line 241, in __call__
-#     return super().__call__(text_inputs, **kwargs)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/pipelines/base.py", line 1196, in __call__
-#     return self.run_single(inputs, preprocess_params, forward_params, postprocess_params)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/pipelines/base.py", line 1203, in run_single
-#     model_outputs = self.forward(model_inputs, **forward_params)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/pipelines/base.py", line 1102, in forward
-#     model_outputs = self._forward(model_inputs, **forward_params)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/pipelines/text_generation.py", line 328, in _forward
-#     generated_sequence = self.model.generate(input_ids=input_ids, attention_mask=attention_mask, **generate_kwargs)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
-#     return func(*args, **kwargs)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/generation/utils.py", line 1592, in generate
-#     return self.sample(
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/generation/utils.py", line 2696, in sample
-#     outputs = self(
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
-#     return self._call_impl(*args, **kwargs)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
-#     return forward_call(*args, **kwargs)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/models/llama/modeling_llama.py", line 1168, in forward
-#     outputs = self.model(
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
-#     return self._call_impl(*args, **kwargs)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
-#     return forward_call(*args, **kwargs)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/models/llama/modeling_llama.py", line 982, in forward
-#     causal_mask = self._update_causal_mask(attention_mask, inputs_embeds)
-#   File "/home/liyuan/miniconda3/envs/handy/lib/python3.8/site-packages/transformers/models/llama/modeling_llama.py", line 1075, in _update_causal_mask
-#     padding_mask = causal_mask[..., :mask_length].eq(0.0) * attention_mask[:, None, None, :].eq(0.0)
-# RuntimeError: The size of tensor a (4096) must match the size of tensor b (4097) at non-singleton dimension 3

@@ -10,18 +10,19 @@ from typing import Any, List, Dict
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_trials", type=int, help="The number of trials to run")
-    parser.add_argument("--num_envs", type=int, help="The number of environments per trial")
-    parser.add_argument("--max_steps", type=int, default=10, help="The maximum number of steps per environment")
+    parser.add_argument("--num_trials", type=int, default=1, help="The number of trials to run")
+    parser.add_argument("--num_envs", type=int, default=1, help="The number of environments per trial")
+    parser.add_argument("--max_steps", type=int, default=60, help="The maximum number of steps per environment")
     parser.add_argument("--run_name", type=str, help="The name of the run")
     parser.add_argument("--use_memory", action='store_true', help="Allow the Agent to use memory")
     parser.add_argument("--is_resume", action='store_true', help="To resume run")
     parser.add_argument("--resume_dir", type=str, help="If resume, the logging directory", default="")
     parser.add_argument("--start_trial_num", type=int, help="If resume, the start trial num", default=0)
-    parser.add_argument("--model", type=str, help="The model to use. One of `gpt-4`, `gpt-3.5-turbo`")
+    parser.add_argument("--model", type=str, default='gpt-3.5-turbo', help="The model to use. One of `gpt-4`, `gpt-3.5-turbo`")
 
     # args = parser.parse_args()
-    debug_args = '--num_trials 5 --num_envs 5 --run_name eth_test_run_modified --use_memory --model gpt-3.5-turbo'.split(' ')
+    # debug_args = '--num_trials 5 --num_envs 5 --run_name eth_test_run_modified --use_memory'.split(' ')
+    debug_args = '--num_trials 1 --num_envs 1 --run_name eth_run_nomem'.split(' ')
     args = parser.parse_args(debug_args)
 
     assert args.num_trials > 0, "Number of trials should be positive"
@@ -30,6 +31,8 @@ def get_args():
     return args
 
 def main(args) -> None:
+    print(args)
+
     if args.is_resume:
         if not os.path.exists(args.resume_dir):
             raise ValueError(f"Resume directory `{args.resume_dir}` does not exist")
@@ -58,34 +61,6 @@ def main(args) -> None:
             }]
     
     world_log_path: str = os.path.join(logging_dir, 'world.log')
-
-    # print start status to user
-    if args.is_resume:
-        print(f"""
-    
-    -----
-    Resuming run with the following parameters:
-    Run name: {logging_dir}
-    Number of trials: {args.num_trials}
-    Number of environments: {args.num_envs}
-    Use memory: {args.use_memory}
-    Resume trial number: {args.start_trial_num}
-
-    Sending all logs to `{args.run_name}`
-    -----
-    """)
-    else:
-        print(f"""
-    -----
-    Starting run with the following parameters:
-    Run name: {logging_dir}
-    Number of trials: {args.num_trials}
-    Number of environments: {args.num_envs}
-    Use memory: {args.use_memory}
-
-    Sending all logs to `{args.run_name}`
-    -----
-    """)
 
     # run trials
     trial_idx = args.start_trial_num
