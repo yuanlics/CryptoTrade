@@ -2,8 +2,7 @@ import os
 import json
 import argparse
 
-# from eth_trial import run_trial
-from eth_trial_modified import run_trial
+from eth_trial import run_trial
 from generate_reflections import update_memory
 
 from typing import Any, List, Dict

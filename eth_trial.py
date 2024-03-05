@@ -7,8 +7,7 @@ import yaml
 import openai
 import importlib
 from utils import Model, get_chat
-# from eth_env import ETHTradingEnv
-from eth_env_modified import ETHTradingEnv
+from eth_env import ETHTradingEnv
 from env_history import EnvironmentHistory
 
 from typing import List, Dict, Any, Tuple
