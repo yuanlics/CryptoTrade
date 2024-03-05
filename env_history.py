@@ -26,7 +26,10 @@ class EnvironmentHistory:
         use_txnstat = self.args.use_txnstat
 
         s = self._cur_query + '\n'
-        s += 'The action and state history is given in chronological order:\n'
+        if use_history:
+            s += 'The action and state history is given in chronological order:\n'
+        else:
+            s += 'Your current state is:\n'
         for i, item in enumerate(self._history):
             if not use_history and i < len(self._history) - 1:  # if no history, only keep last state
                 continue
@@ -38,15 +41,18 @@ class EnvironmentHistory:
                 if use_txnstat:
                     state_hisotry += f', Last number of transactions: {state["num_txns"]}'
                 if use_macd:
-                    state_hisotry += f', Technical Indicator MACD: {state["macd"]:.2f}, MACD Signal Line: {state["macd_signal_line"]:.2f}, MACD signal: {state["macd_signal"]}'
+                    # state_hisotry += f', Technical Indicator MACD: {state["macd"]:.2f}, MACD Signal Line: {state["macd_signal_line"]:.2f}, MACD signal: {state["macd_signal"]}'
+                    state_hisotry += f', Technical Indicator MACD signal: {state["macd_signal"]}'
                 if use_mac:
-                    state_hisotry += f', Technical Indicator SMA5: {state["ma5"]:.2f}, SMA20: {state["ma20"]:.2f}, MA Crossover signal: {state["mac_5_20_signal"]}'
+                    # state_hisotry += f', Technical Indicator SMA5: {state["ma5"]:.2f}, SMA20: {state["ma20"]:.2f}, MA Crossover signal: {state["mac_5_20_signal"]}'
+                    state_hisotry += f', Technical Indicator MA Crossover signal: {state["mac_5_20_signal"]}'
                 s += state_hisotry + '\n'
 
         state = self._history[-1]['value']
         if use_news:
             s += f"Your news summaries: {state['news']}. "
-        s += f"Start your response with an action (a precision-two float value in range [-1,1]). Then, explain your reason behind it."
+        # s += f"Start your response with an action (a precision-two float value in range [-1,1]). Then, explain your reason behind it."
+        s += f"Start your response with your reasoning over the given context to make an action. Then, directly give your action in the end <precision-two float value, with [-1,0) to buy, (0,1] to sell, 0 to hold>"
         return s
 
 def _get_base_query(base_query: str, memory: List[str]) -> str:

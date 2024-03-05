@@ -125,8 +125,9 @@ class ETHTradingEnv:
             elif len(actions) == 1:
                 action = float(actions[0])
             else:
-                # print(f'Multiple actions in llm response: {action}. Set to first action.')
-                action = float(actions[0])
+                # print(f'Multiple actions in llm response: {action}. Pick one action.')
+                # action = float(actions[0])
+                action = float(actions[-1])
         
         if not -1 <= action <= 1:
             print(f"Invalid action: {action}. Set to no action.")
@@ -137,14 +138,14 @@ class ETHTradingEnv:
         open_price = today['open']
         next_open_price = next_day['open']  # assume today's close = next day's open
         
-        if -1 <= action < 0 and self.eth_held > 0:  # Sell ETH
+        if 0 < action <= 1 and self.eth_held > 0:  # Sell ETH
             eth_diff = abs(action) * self.eth_held
             cash_diff = eth_diff * open_price
             self.eth_held -= eth_diff
             self.cash += cash_diff
             self.cash -= GAS_FEE * open_price + cash_diff * EX_RATE
-        elif 0 < action <= 1 and self.cash > 0:  # Buy ETH
-            cash_diff = action * self.cash
+        elif -1 <= action < 0 and self.cash > 0:  # Buy ETH
+            cash_diff = abs(action) * self.cash
             eth_diff = cash_diff / open_price
             self.cash -= cash_diff
             self.eth_held += eth_diff

@@ -26,13 +26,18 @@ def get_args():
 
     parser.add_argument("--resume_dir", type=str, help="If resume, the logging directory", default="")
     parser.add_argument("--start_trial_num", type=int, help="If resume, the start trial num", default=0)
-    parser.add_argument("--model", type=str, default='gpt-3.5-turbo', help="The model to use. One of `gpt-4`, `gpt-3.5-turbo`")
+    parser.add_argument("--model", type=str, default='gpt-3.5-turbo', help="gpt-3.5-turbo, gpt-4-turbo-preview")
 
     # args = parser.parse_args()
     # debug_args = '--num_trials 5 --num_envs 5 --run_name eth_test_run_modified --use_memory'.split(' ')
-    # debug_args = '--num_trials 1 --num_envs 1 --run_name eth_run_nomem --ym 202401'.split(' ')
-    # debug_args = '--num_trials 1 --num_envs 1 --run_name eth_run_nomem --ym 202311'.split(' ')
-    debug_args = '--num_trials 1 --num_envs 1 --run_name eth_run_nomem --ym 202309'.split(' ')
+    # debug_args = '--ym 202401'.split(' ')
+    # debug_args = '--ym 202401'.split(' ')
+    # debug_args = '--ym 202311'.split(' ')
+    # debug_args = '--ym 202309'.split(' ')
+
+    # debug_args = '--ym 202311 --use_news 1 --use_mac 0 --use_macd 1 --use_txnstat 1 --use_history 1'.split(' ')
+    debug_args = '--ym 202311 --use_news 1 --use_mac 0 --use_macd 1 --use_txnstat 1 --use_history 1'.split(' ')
+
     args = parser.parse_args(debug_args)
 
     assert args.num_trials > 0, "Number of trials should be positive"
