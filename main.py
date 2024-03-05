@@ -13,16 +13,27 @@ def get_args():
     parser.add_argument("--num_trials", type=int, default=1, help="The number of trials to run")
     parser.add_argument("--num_envs", type=int, default=1, help="The number of environments per trial")
     parser.add_argument("--max_steps", type=int, default=60, help="The maximum number of steps per environment")
-    parser.add_argument("--run_name", type=str, help="The name of the run")
-    parser.add_argument("--use_memory", action='store_true', help="Allow the Agent to use memory")
+    parser.add_argument("--run_name", type=str, default='eth_run', help="The name of the run")
+    parser.add_argument("--ym", type=str, default='202401', help="year month")
     parser.add_argument("--is_resume", action='store_true', help="To resume run")
+    parser.add_argument("--to_print", type=int, default=1, help="Print debug info")
+
+    parser.add_argument("--use_memory", action='store_true', help="Allow the Agent to use memory for reflexion")
+    parser.add_argument("--use_news", type=int, default=1, help="Prompt +news")
+    parser.add_argument("--use_history", type=int, default=1, help="Prompt +news")
+    parser.add_argument("--use_mac", type=int, default=1, help="Prompt +mac_signal")
+    parser.add_argument("--use_macd", type=int, default=1, help="Prompt +macd_signal")
+    parser.add_argument("--use_txnstat", type=int, default=1, help="Prompt +txn_stat")
+
     parser.add_argument("--resume_dir", type=str, help="If resume, the logging directory", default="")
     parser.add_argument("--start_trial_num", type=int, help="If resume, the start trial num", default=0)
     parser.add_argument("--model", type=str, default='gpt-3.5-turbo', help="The model to use. One of `gpt-4`, `gpt-3.5-turbo`")
 
     # args = parser.parse_args()
     # debug_args = '--num_trials 5 --num_envs 5 --run_name eth_test_run_modified --use_memory'.split(' ')
-    debug_args = '--num_trials 1 --num_envs 1 --run_name eth_run_nomem'.split(' ')
+    # debug_args = '--num_trials 1 --num_envs 1 --run_name eth_run_nomem --ym 202401'.split(' ')
+    # debug_args = '--num_trials 1 --num_envs 1 --run_name eth_run_nomem --ym 202311'.split(' ')
+    debug_args = '--num_trials 1 --num_envs 1 --run_name eth_run_nomem --ym 202309'.split(' ')
     args = parser.parse_args(debug_args)
 
     assert args.num_trials > 0, "Number of trials should be positive"
@@ -77,7 +88,7 @@ def main(args) -> None:
             open(trial_env_configs_log_path, 'w').close()
 
         # run trial
-        run_trial(trial_log_path, world_log_path, trial_idx, env_configs, args.use_memory, args.model, max_steps=args.max_steps)
+        run_trial(trial_log_path, world_log_path, trial_idx, env_configs, args=args)
 
         # update memory if needed
         if args.use_memory:

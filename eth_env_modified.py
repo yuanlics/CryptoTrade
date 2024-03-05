@@ -4,11 +4,10 @@ import re
 import random
 from datetime import datetime
 import json
+from argparse import Namespace
 
-# PATH_PRICE = 'data/eth_202401.csv'
-# PATH_PRICE = 'data/eth_202311.csv'
-PATH_PRICE = 'data/eth_202309.csv'
 DIR_NEWS  = 'data/gnews'
+PATH_TXN_STAT = 'data/eth_number_of_transactions.csv'
 PRICE_TIME_FMT = "%Y-%m-%d %H:%M:%S UTC"
 GAS_LIMITS = 21000  # unit
 GAS_PRICE = 70  # gwei
@@ -19,63 +18,95 @@ EX_RATE = 4e-3  # exchange fee = txn_amount * ex_rate
 
 
 class ETHTradingEnv:
-    def __init__(self):
-        self.data = pd.read_csv(PATH_PRICE)
+    def __init__(self, args):
+        ym = args.ym
+        path_price = f'data/eth_{ym}.csv'
+        self.data = pd.read_csv(path_price)
+        self.txn_stat = pd.read_csv(PATH_TXN_STAT)
+        self.txn_stat['date'] = pd.to_datetime(self.txn_stat['Date'], format="%d/%m/%y %H:%M")  # 27/1/24 0:00
         self.total_steps = len(self.data)
         self.starting_cash = 1_000_000
         self.reset()
 
-    def get_state(self, today, next_day, has_news=True):
+    def get_close_state(self, today, next_day, first_day=False):
         next_open_price = next_day['open']
         close_net_worth = self.cash + self.eth_held * next_open_price
         close_roi = close_net_worth / self.starting_cash - 1  # return on investment
 
-        # technical state
-        ma5 = next_day['SMA_5']
-        ma20 = next_day['SMA_20']
-        mac_signal = 'hold'  # MA Crossover
-        if ma5 > ma20:
-            mac_signal = 'sell'
-        elif ma5 < ma20:
-            mac_signal = 'buy'
-
-        # news state
         date = today['snapped_at']
         parsed_time = datetime.strptime(date, PRICE_TIME_FMT)
         year, month, day = parsed_time.year, parsed_time.month, parsed_time.day
+
+        # next day's opening technical indicators
+        ma5 = next_day['SMA_5']
+        ma10 = next_day['SMA_10']
+        ma20 = next_day['SMA_20']
+        mac_5_20_signal = 'hold'
+        if ma5 > ma20:
+            mac_5_20_signal = 'sell'
+        elif ma5 < ma20:
+            mac_5_20_signal = 'buy'
+
+        mac_10_20_signal = 'hold'
+        if ma10 > ma20:
+            mac_10_20_signal = 'sell'
+        elif ma10 < ma20:
+            mac_10_20_signal = 'buy'
+
+        macd = next_day['MACD']
+        macd_signal_line = next_day['Signal_Line']
+        macd_signal = 'hold'
+        if macd < macd_signal_line:
+            macd_signal = 'buy'
+        elif macd > macd_signal_line:
+            macd_signal = 'sell'
+
+        # today's txn stats
+        txn_stat = self.txn_stat[self.txn_stat['date'] == parsed_time]
+        num_txns = txn_stat['Number of transactions'].values[0]
+        if first_day:
+            num_txns = 'N/A'
+
+        # today's news
         news_path = f"{DIR_NEWS}/{year}-{str(month).zfill(2)}-{str(day).zfill(2)}.json"
         news = json.load(open(news_path))
-        if not has_news:
-            news = ''  # no news for first action day
+        if first_day:
+            news = 'N/A'
 
-        close_state = {
+        close_state = {  # selectively used in prompt
             'cash': self.cash,
             'eth_held': self.eth_held,
             'open': next_open_price,
             'net_worth': close_net_worth,
             'roi': close_roi,
             'ma5': ma5,
+            'ma10': ma10,
             'ma20': ma20,
-            'mac_signal': mac_signal,
+            'macd': macd,
+            'macd_signal_line': macd_signal_line,
+            'mac_5_20_signal': mac_5_20_signal,
+            'mac_10_20_signal': mac_10_20_signal,
+            'macd_signal': macd_signal,
+            'num_txns': num_txns,
             'news': news,
         }
         return close_state
 
     def reset(self):
         self.cash = self.starting_cash
-        self.close_net_worth_history = [self.starting_cash]
         self.eth_held = 0
         self.current_step = 0  # start from the beginning
         # self.current_step = random.randint(0, self.total_steps)  # random starting time
 
         next_day = today = self.data.iloc[self.current_step]
         self.starting_price = today['open']
-        close_state = self.get_state(today, next_day, has_news=False)
+        close_state = self.get_close_state(today, next_day, first_day=True)
         info = {
             'starting_cash': self.starting_cash,
         }
         reward = 0
         self.done = False
+        self.last_state = close_state
         return close_state, reward, self.done, info
 
     # the agent receives last state and reward, takes an action, and receives new state and reward.
@@ -119,42 +150,13 @@ class ETHTradingEnv:
             self.eth_held += eth_diff
             self.cash -= GAS_FEE * open_price + cash_diff * EX_RATE
         
-        close_net_worth = self.cash + self.eth_held * next_open_price
-        close_roi = close_net_worth / self.starting_cash - 1  # return on investment
-        self.close_net_worth_history.append(close_net_worth)
-        
         self.current_step += 1
         if self.current_step >= self.total_steps - 1:
             self.done = True
 
-        # technical state
-        ma5 = next_day['SMA_5']
-        ma20 = next_day['SMA_20']
-        ma_signal = 'hold'
-        if ma5 > ma20:
-            ma_signal = 'sell'
-        elif ma5 < ma20:
-            ma_signal = 'buy'
-
-        # news state
-        date = today['snapped_at']
-        parsed_time = datetime.strptime(date, PRICE_TIME_FMT)
-        year, month, day = parsed_time.year, parsed_time.month, parsed_time.day
-        news_path = f"{DIR_NEWS}/{year}-{str(month).zfill(2)}-{str(day).zfill(2)}.json"
-        news = json.load(open(news_path))
-        
-        close_state = {
-            'cash': self.cash,
-            'eth_held': self.eth_held,
-            'open': next_open_price,
-            'net_worth': close_net_worth,
-            'roi': close_roi,
-            'ma5': ma5,
-            'ma20': ma20,
-            'mac_signal': ma_signal,
-            'news': news,
-        }
-        reward = self.close_net_worth_history[-1] - self.close_net_worth_history[-2]  # reward = today's profit.
+        close_state = self.get_close_state(today, next_day)
+        reward = close_state['roi'] - self.last_state['roi']  # reward = today's roi gain.
+        self.last_state = close_state
         info = {
             'raw_action': raw_action,
             'actual_action': action,
@@ -169,7 +171,8 @@ class ETHTradingEnv:
 
 
 if __name__ == "__main__":
-    env = ETHTradingEnv()
+    args = Namespace(ym='202401')
+    env = ETHTradingEnv(args)
     ACTIONS = np.arange(-1, 1.1, 0.2).tolist()
     # ACTIONS = [1]
     state, reward, done, info = env.reset()

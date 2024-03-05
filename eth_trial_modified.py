@@ -23,11 +23,15 @@ def llm(prompt: str, model: Model):
         import sys
         sys.exit(1)
 
-def eth_run(env, base_prompt, memory: List[str], max_steps=50, to_print=True, starting_state=None, model: Model = "gpt-3.5-turbo") -> Tuple[EnvironmentHistory, bool]:
+def eth_run(env, base_prompt, memory, starting_state, args):
+    to_print = args.to_print
+    max_steps = args.max_steps
+    model = args.model
+
     if len(memory) > 3:
-        env_history = EnvironmentHistory(base_prompt, starting_state, memory[-3:], [])
+        env_history = EnvironmentHistory(base_prompt, starting_state, memory[-3:], [], args)
     else:
-        env_history = EnvironmentHistory(base_prompt, starting_state, memory, [])
+        env_history = EnvironmentHistory(base_prompt, starting_state, memory, [], args)
     if to_print:
         print_state = {k: v for k, v in starting_state.items()}
         print(f'Init state: {print_state}')
@@ -36,13 +40,16 @@ def eth_run(env, base_prompt, memory: List[str], max_steps=50, to_print=True, st
         prompt = str(env_history)
         action = llm(prompt, model=model).strip()
         state, reward, done, info = env.step(action)
+        raw_action = info['raw_action']
         action = info['actual_action']
         action = f'{action:.2f}'
         env_history.add("action", action)
         env_history.add("state", state)
         if to_print:
             print_state = {k: v for k, v in state.items() if k != 'news'}
-            print(f'Action: {action}\nState: {print_state}')
+            print(f'Action: {action}')
+            print(f'Reasoning: {raw_action}')
+            print(f'State: {print_state}')
         if done:
             break
         cur_step += 1
@@ -51,16 +58,15 @@ def eth_run(env, base_prompt, memory: List[str], max_steps=50, to_print=True, st
     return env_history, is_success
 
 def run_trial(
-        trial_log_path: str,
-        world_log_path: str,
-        trial_idx: int,
+        trial_log_path,
+        world_log_path,
+        trial_idx,
         env_configs: List[Dict[str, Any]],
-        use_memory: bool,
-        model: Model,
-        max_steps: int = 50
+        args,
     ) -> List[Dict[str, Any]]:
+    use_memory = args.use_memory
 
-    env = ETHTradingEnv()
+    env = ETHTradingEnv(args)
 
     num_successes: int = 0
     num_additional_successes: int = 0
@@ -97,9 +103,10 @@ def run_trial(
 # - **To Sell:** Indicate a negative decimal fraction of your ETH holdings you wish to sell, capturing your strategic decision (e.g., -0.40 for 40%).\
 # - **To Hold:** A decision to hold requires no action but is an active strategy based on your market analysis.\
 # **Precision in Decision:** Ensure your decision is presented as a two-decimal value within the [-1, 1] range. This precision reflects the nuanced analysis and strategic thought behind your decision."
-        base_prompt = f'You are a professional crypto currency trader and you are trying to maximize your overall profit. In each day, you will make an action represented by a precision-two float value in range [-1,1]. If action in range [-1,0], you will sell this portion of holding ETH at hand. If action in range [0,1], you will spend this portion of cash at hand to buy ETH. A small transaction fee is charged based on the transaction amount, so frequent large transactions are penalized. If action is 0, no action is taken and no transaction fee is charged. You will start with {info["starting_cash"]} dollars. Wisely analyze action history, technical signals, and news to make decisions. \n'
+        base_prompt = f'You are a professional crypto currency trader and you are trying to maximize your overall profit. In each day, you will make an action represented by a precision-two float value in range [-1,1]. If action in range [-1,0], you will sell this portion of holding ETH at hand. If action in range [0,1], you will spend this portion of cash at hand to buy ETH. If action is 0, no action is taken and no transaction fee is charged. You will start with {info["starting_cash"]} dollars. Wisely analyze the current state to make decisions. \n'
+        # 'A small transaction fee is charged based on the transaction amount, so frequent large transactions are penalized.'
 
-        final_env_history, is_success = eth_run(env, base_prompt, env_config["memory"] if use_memory else [], to_print=True, starting_state=starting_state, model=model, max_steps=max_steps)
+        final_env_history, is_success = eth_run(env, base_prompt, env_config["memory"] if use_memory else [], starting_state, args=args)
 
         # update env config
         if is_success:
