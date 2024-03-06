@@ -35,8 +35,9 @@ def get_args():
     # debug_args = '--ym 202311'.split(' ')
     # debug_args = '--ym 202309'.split(' ')
 
+    # debug_args = '--ym 202401 --use_news 1 --use_mac 0 --use_macd 1 --use_txnstat 1 --use_history 1'.split(' ')
     # debug_args = '--ym 202311 --use_news 1 --use_mac 0 --use_macd 1 --use_txnstat 1 --use_history 1'.split(' ')
-    debug_args = '--ym 202311 --use_news 1 --use_mac 0 --use_macd 1 --use_txnstat 1 --use_history 1'.split(' ')
+    debug_args = '--ym 202309 --use_news 1 --use_mac 0 --use_macd 1 --use_txnstat 1 --use_history 1'.split(' ')
 
     args = parser.parse_args(debug_args)
 

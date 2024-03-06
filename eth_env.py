@@ -9,6 +9,9 @@ from argparse import Namespace
 DIR_NEWS  = 'data/gnews'
 PATH_TXN_STAT = 'data/eth_number_of_transactions.csv'
 PRICE_TIME_FMT = "%Y-%m-%d %H:%M:%S UTC"
+STARTING_NET_WORTH = 1_000_000
+STARTING_CASH_RATIO = 0.5
+# STARTING_CASH_RATIO = 1
 GAS_LIMITS = 21000  # unit
 GAS_PRICE = 70  # gwei
 GAS_FEE = GAS_LIMITS * GAS_PRICE * 1e-9  # eth per txn
@@ -25,13 +28,14 @@ class ETHTradingEnv:
         self.txn_stat = pd.read_csv(PATH_TXN_STAT)
         self.txn_stat['date'] = pd.to_datetime(self.txn_stat['Date'], format="%d/%m/%y %H:%M")  # 27/1/24 0:00
         self.total_steps = len(self.data)
-        self.starting_cash = 1_000_000
+        self.starting_net_worth = STARTING_NET_WORTH
+        self.starting_cash_ratio = STARTING_CASH_RATIO
         self.reset()
 
     def get_close_state(self, today, next_day, first_day=False):
         next_open_price = next_day['open']
         close_net_worth = self.cash + self.eth_held * next_open_price
-        close_roi = close_net_worth / self.starting_cash - 1  # return on investment
+        close_roi = close_net_worth / self.starting_net_worth - 1  # return on investment
 
         date = today['snapped_at']
         parsed_time = datetime.strptime(date, PRICE_TIME_FMT)
@@ -93,16 +97,14 @@ class ETHTradingEnv:
         return close_state
 
     def reset(self):
-        self.cash = self.starting_cash
-        self.eth_held = 0
-        self.current_step = 0  # start from the beginning
-        # self.current_step = random.randint(0, self.total_steps)  # random starting time
-
+        self.current_step = 0
         next_day = today = self.data.iloc[self.current_step]
         self.starting_price = today['open']
+        self.cash = self.starting_net_worth * STARTING_CASH_RATIO
+        self.eth_held = (self.starting_net_worth - self.cash) / self.starting_price
         close_state = self.get_close_state(today, next_day, first_day=True)
         info = {
-            'starting_cash': self.starting_cash,
+            'starting_cash': self.cash,
         }
         reward = 0
         self.done = False
@@ -118,9 +120,11 @@ class ETHTradingEnv:
     def step(self, action):
         raw_action = action
         if type(action) == str:
-            actions = re.findall(r"[-+]?\d*\.\d+|\d+", action)
+            # actions = re.findall(r"[-+]?\d*\.\d+|\d+", action)
+            actions = re.findall(r"-?(?:0(?:\.\d{2})|1\.00)", action)
+            
             if len(actions) == 0:
-                print(f'Invalid llm response: {action}. Set to no action.')
+                print(f'ERROR: Invalid llm response: {action}. Set to no action.')
                 action = 0.00
             elif len(actions) == 1:
                 action = float(actions[0])
@@ -130,7 +134,7 @@ class ETHTradingEnv:
                 action = float(actions[-1])
         
         if not -1 <= action <= 1:
-            print(f"Invalid action: {action}. Set to no action.")
+            print(f"ERROR: Invalid action: {action}. Set to no action.")
             action = 0.00
 
         today = self.data.iloc[self.current_step]
@@ -161,8 +165,8 @@ class ETHTradingEnv:
         info = {
             'raw_action': raw_action,
             'actual_action': action,
-            'starting_cash': self.starting_cash,
-            'ref_all_in': self.starting_cash / self.starting_price * next_open_price,
+            'starting_cash': self.starting_net_worth,
+            'ref_all_in': self.starting_net_worth / self.starting_price * next_open_price,
             'today': today['snapped_at'],
         }
         return close_state, reward, self.done, info
@@ -180,10 +184,17 @@ if __name__ == "__main__":
     print(f"init state: {state}, info: {info}, step: {env.current_step} \n")
     while not done:
         action = random.choice(ACTIONS)
+        action = '''
+Based on the given context, it is evident that the market trend has been fluctuating with signals to buy and sell ETH. The technical indicator MACD signal has been alternating between buy and sell, indicating a volatile market. Additionally, news summaries suggest a positive outlook for Ethereum, with mentions of potential ETF approvals and price surges.
+
+Given the market volatility and positive news sentiment, I would recommend taking a cautious approach and closely monitoring the market trends. In this scenario, I would suggest selling a portion of the ETH holdings to capitalize on the price surges and potential profits.
+
+Action: 0.50 (Sell 50% of ETH holdings)'''
         state, reward, done, info = env.step(action)
         print(f"Action: {action}")
         print_state = {k: v for k, v in state.items() if k != 'news'}
         # print_state['news'] = [{'id': item['id'], 'title': '.', 'summary': '.'} for item in state['news']]
         print(f"State: {print_state}, reward: {reward}, done: {done}, info: {info} \n")
+        break
     roi = state['roi']
     print(f"ROI: {roi*100:.2f}%")

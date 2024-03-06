@@ -52,7 +52,7 @@ class EnvironmentHistory:
         if use_news:
             s += f"Your news summaries: {state['news']}. "
         # s += f"Start your response with an action (a precision-two float value in range [-1,1]). Then, explain your reason behind it."
-        s += f"Start your response with your reasoning over the given context to make an action. Then, directly give your action in the end <precision-two float value, with [-1,0) to buy, (0,1] to sell, 0 to hold>"
+        s += f"Start your response with your reasoning over the given context to make an action. Then, give your action in the end in format <precision-two float value, [-1,0) to buy, (0,1] to sell, 0 to hold>"
         return s
 
 def _get_base_query(base_query: str, memory: List[str]) -> str:
