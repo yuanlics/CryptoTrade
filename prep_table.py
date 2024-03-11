@@ -31,7 +31,7 @@ if __name__ == '__main__':
         print(len(df_m))
         stat = [df_m.iloc[0]['open'], df_m['open'].max(), df_m['open'].min(), df_m.iloc[-1]['open']]
         print([f'{s:.2f}' for s in stat])
-        df_m.to_csv(f'../data/eth_{ym}.csv', index=False)
+        df_m.to_csv(f'data/eth_{ym}.csv', index=False)
 
         # macd_signal = df_m['MACD'] - df_m['Signal_Line']
         # macd_signal = macd_signal / macd_signal.abs().max()

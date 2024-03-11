@@ -125,10 +125,14 @@ def run_strategy(strategy, file_path, sargs):
             if cash > 0:
                 action = -1
 
-        elif strategy == 'sell':
-            action = 0
-            if eth_held > 0:
+        elif strategy == 'optimal':
+            next_open = df.iloc[index+1]['open']
+            if open_price < next_open:
+                action = -1
+            elif open_price > next_open:
                 action = 1
+            else:
+                action = 0
 
         else:
             raise ValueError('Invalid strategy')
@@ -143,22 +147,34 @@ def run_strategy(strategy, file_path, sargs):
     return roi
 
 
-for strategy in ['buy', 'sell']:
-    roi_test = []
-    for ym in yms_test:
-        env = ETHTradingEnv(Namespace(ym=ym))
-        file_path = f'../data/eth_{ym}.csv'
-        roi = run_strategy(strategy, file_path, {'ym': ym})
-        print(f'{strategy}, Time: {ym}, ROI: {roi*100:.2f}%')
-        roi_test.append(roi)
-    roi_test = np.array(roi_test) * 100
-    print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')
+strategy = 'optimal'
+roi_test = []
+for ym in yms_test:
+    env = ETHTradingEnv(Namespace(ym=ym))
+    file_path = f'data/eth_{ym}.csv'
+    roi = run_strategy(strategy, file_path, {'ym': ym})
+    print(f'{strategy}, Time: {ym}, ROI: {roi*100:.2f}%')
+    roi_test.append(roi)
+roi_test = np.array(roi_test) * 100
+print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')
+
+
+strategy = 'buy'
+roi_test = []
+for ym in yms_test:
+    env = ETHTradingEnv(Namespace(ym=ym))
+    file_path = f'data/eth_{ym}.csv'
+    roi = run_strategy(strategy, file_path, {'ym': ym})
+    print(f'{strategy}, Time: {ym}, ROI: {roi*100:.2f}%')
+    roi_test.append(roi)
+roi_test = np.array(roi_test) * 100
+print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')
 
 
 strategy = 'SMA'
 roi_val = defaultdict(float)
 for ym in yms_val:
-    file_path = f'../data/eth_{ym}.csv'
+    file_path = f'data/eth_{ym}.csv'
     for period in sma_periods:
         # for ratio in np.arange(0.2, 1.1, 0.2):
         column = f'SMA_{period}'
@@ -171,7 +187,7 @@ print(roi_val)
 period = 30
 roi_test = []
 for ym in yms_test:
-    file_path = f'../data/eth_{ym}.csv'
+    file_path = f'data/eth_{ym}.csv'
     column = f'SMA_{period}'
     sargs = {'column': column, 'ratio': RATIO, 'ym': ym}
     roi = run_strategy(strategy, file_path, sargs)
@@ -182,27 +198,11 @@ print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')
 
 
 print()
-strategy = 'MACD'
-roi_test = []
-for ym in yms_test:
-# for ym in yms_all:
-# for ym in ['202309']:
-    file_path = f'../data/eth_{ym}.csv'
-    # for ratio in np.arange(0.2, 1.1, 0.2):
-    sargs = {'ratio': RATIO, 'ym': ym}
-    roi = run_strategy(strategy, file_path, sargs)
-    print(f'{strategy}, Time: {ym}, ROI: {roi*100:.2f}%')
-    roi_test.append(roi)
-roi_test = np.array(roi_test) * 100
-print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')
-
-
-print()
 strategy = 'SLMA'
 roi_val = defaultdict(float)
 for ym in yms_val:
 # for ym in yms_all:
-    file_path = f'../data/eth_{ym}.csv'
+    file_path = f'data/eth_{ym}.csv'
     ratio = 1
     for i in range(len(sma_periods)-1):
         for j in range(i+1, len(sma_periods)):
@@ -218,11 +218,27 @@ short, long = 'SMA_10', 'SMA_20'
 # short, long = 'SMA_5', 'SMA_20'
 roi_test = []
 for ym in yms_test:
-    file_path = f'../data/eth_{ym}.csv'
+    file_path = f'data/eth_{ym}.csv'
     ratio = 1
     sargs = {'ratio': ratio, 'short': short, 'long': long, 'ym': ym}
     roi = run_strategy(strategy, file_path, sargs)
     print(f'{strategy}, Short: {short}, Long: {long}, Time: {ym}, ROI: {roi*100:.2f}%')
+    roi_test.append(roi)
+roi_test = np.array(roi_test) * 100
+print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')
+
+
+print()
+strategy = 'MACD'
+roi_test = []
+for ym in yms_test:
+# for ym in yms_all:
+# for ym in ['202309']:
+    file_path = f'data/eth_{ym}.csv'
+    # for ratio in np.arange(0.2, 1.1, 0.2):
+    sargs = {'ratio': RATIO, 'ym': ym}
+    roi = run_strategy(strategy, file_path, sargs)
+    print(f'{strategy}, Time: {ym}, ROI: {roi*100:.2f}%')
     roi_test.append(roi)
 roi_test = np.array(roi_test) * 100
 print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')
@@ -234,7 +250,7 @@ period = 20
 multiplier = 2
 roi_test = []
 for ym in yms_test:
-    file_path = f'../data/eth_{ym}.csv'
+    file_path = f'data/eth_{ym}.csv'
     ratio = 1
     sargs = {'period': period, 'multiplier': multiplier, 'ratio': ratio, 'ym': ym}
     roi = run_strategy(strategy, file_path, sargs)
