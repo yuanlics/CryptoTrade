@@ -9,7 +9,7 @@ from argparse import Namespace
 
 strategies = ['SMA', 'MACD']
 sma_periods = [5, 10, 15, 20, 30]
-dates = ['2022-08-01','2023-02-01', '2024-02-01']
+dates = ['2022-02-01','2023-02-01', '2024-02-01']
 VAL_START, VAL_END = dates[-3], dates[-2]
 TEST_START, TEST_END = dates[-2], dates[-1]
 RATIO = 1.0  # txn amount ratio
@@ -32,17 +32,16 @@ df['MACD'] = df['EMA_12'] - df['EMA_26']
 df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
 
 # dataset stats
-# for mi in range(len(dates)-1):
-#     starting_date = dates[mi]
-#     ending_date = dates[mi+1]
-#     y, m, _ = starting_date.split('-')
-#     ym = f'{y}{m}'
-#     df_m = df[(df['date'] >= starting_date) & (df['date'] < ending_date)]
-#     print(f'{ym} length:', len(df_m))
-#     stat = [df_m.iloc[0]['open'], df_m['open'].max(), df_m['open'].min(), df_m.iloc[-1]['open']]
-#     print('open, max, min, close:', [f'{s:.2f}' for s in stat])
-#     # df_m.to_csv(f'data/eth_{ym}.csv', index=False)
-# print()
+for mi in range(len(dates)-1):
+    starting_date = dates[mi]
+    ending_date = dates[mi+1]
+    y, m, _ = starting_date.split('-')
+    df_m = df[(df['date'] >= starting_date) & (df['date'] < ending_date)]
+    print(f'{starting_date} to {ending_date} length:', len(df_m))
+    stat = [df_m.iloc[0]['open'], df_m['open'].max(), df_m['open'].min(), df_m.iloc[-1]['open']]
+    print('open, max, min, close:', [f'{s:.2f}' for s in stat])
+    # df_m.to_csv(f'data/eth_f'{y}{m}'.csv', index=False)
+print()
 
 
 # 1st strategy: Simple MA 
@@ -77,7 +76,7 @@ def run_strategy(strategy, sargs):
         date = row['date']
         y, m, d = date.year, date.month, date.day
         if previous_month != m:
-            month_irrs.append((f'{y}{previous_month:02d}', (net_worth / month_starting_net_worth) - 1))
+            month_irrs.append((net_worth / month_starting_net_worth) - 1)
             month_starting_net_worth = net_worth
             previous_month = m
         if done:
@@ -181,7 +180,7 @@ def run_strategy(strategy, sargs):
 
     net_worth = state['net_worth']
     total_irr = (net_worth / starting_net_worth) - 1
-    month_irrs = np.array([irr for _, irr in month_irrs]) * 100
+    month_irrs = np.array(month_irrs) * 100
     month_irr_mean = np.mean(month_irrs)
     month_irr_std = np.std(month_irrs)
     month_risk_free_rate = 0.01 * 100  # e.g., US treasury bond
@@ -195,51 +194,68 @@ def run_strategy(strategy, sargs):
     print(result_str)
 
 
-strategy = 'optimal'
-print(strategy)
-run_strategy(strategy, {'starting_date': TEST_START, 'ending_date': TEST_END})
+# strategy = 'optimal'
+# print(strategy)
+# run_strategy(strategy, {'starting_date': VAL_START, 'ending_date': VAL_END})
 
-strategy = 'buy_and_hold'
-print(strategy)
-run_strategy(strategy, {'starting_date': TEST_START, 'ending_date': TEST_END})
+# print(strategy)
+# run_strategy(strategy, {'starting_date': TEST_START, 'ending_date': TEST_END})
 
 
-strategy = 'SMA'
-for period in sma_periods:
-    sargs = {'period': period, 'ratio': RATIO, 'starting_date': VAL_START, 'ending_date': VAL_END}
-    print(f'{strategy}, Period: {period}')
-    run_strategy(strategy, sargs)
+# strategy = 'buy_and_hold'
+# print(strategy)
+# run_strategy(strategy, {'starting_date': VAL_START, 'ending_date': VAL_END})
 
-period = 10
-print(f'{strategy}, Period: {period}')
-sargs = {'period': period, 'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END}
-run_strategy(strategy, sargs)
+# print(strategy)
+# run_strategy(strategy, {'starting_date': TEST_START, 'ending_date': TEST_END})
+
+
+# strategy = 'SMA'
+# for period in sma_periods:
+#     sargs = {'period': period, 'ratio': RATIO, 'starting_date': VAL_START, 'ending_date': VAL_END}
+#     print(f'{strategy}, Period: {period}')
+#     run_strategy(strategy, sargs)
+
+# period = 30
+# print(f'{strategy}, Period: {period}')
+# sargs = {'period': period, 'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END}
+# run_strategy(strategy, sargs)
 
 
 strategy = 'SLMA'
-for i in range(len(sma_periods)-1):
-    for j in range(i+1, len(sma_periods)):
-        short = f'SMA_{sma_periods[i]}'
-        long = f'SMA_{sma_periods[j]}'
-        sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': VAL_START, 'ending_date': VAL_END}
-        print(f'{strategy}, Short: {short}, Long: {long}')
-        run_strategy(strategy, sargs)
+# for i in range(len(sma_periods)-1):
+#     for j in range(i+1, len(sma_periods)):
+#         short = f'SMA_{sma_periods[i]}'
+#         long = f'SMA_{sma_periods[j]}'
+#         sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': VAL_START, 'ending_date': VAL_END}
+#         print(f'{strategy}, Short: {short}, Long: {long}')
+#         run_strategy(strategy, sargs)
 
-short, long = 'SMA_5', 'SMA_15'
+short, long = 'SMA_20', 'SMA_30'
 sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': TEST_START, 'ending_date': TEST_END}
 print(f'{strategy}, Short: {short}, Long: {long}')
 run_strategy(strategy, sargs)
 
 
-strategy = 'MACD'
-sargs = {'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END}
-print(f'{strategy}')
-run_strategy(strategy, sargs)
+# strategy = 'MACD'
+# sargs = {'ratio': RATIO, 'starting_date': VAL_START, 'ending_date': VAL_END}
+# print(f'{strategy}')
+# run_strategy(strategy, sargs)
+
+# sargs = {'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END}
+# print(f'{strategy}')
+# run_strategy(strategy, sargs)
 
 
-strategy = 'BollingerBands'
-period = 20
-multiplier = 2
-sargs = {'period': period, 'multiplier': multiplier, 'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END}
-print(f'{strategy}, Period: {period}, Multiplier: {multiplier}')
-run_strategy(strategy, sargs)
+# strategy = 'BollingerBands'
+# period = 20
+# multiplier = 2
+# sargs = {'period': period, 'multiplier': multiplier, 'ratio': RATIO, 'starting_date': VAL_START, 'ending_date': VAL_END}
+# print(f'{strategy}, Period: {period}, Multiplier: {multiplier}')
+# run_strategy(strategy, sargs)
+
+# period = 20
+# multiplier = 2
+# sargs = {'period': period, 'multiplier': multiplier, 'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END}
+# print(f'{strategy}, Period: {period}, Multiplier: {multiplier}')
+# run_strategy(strategy, sargs)
