@@ -5,7 +5,9 @@ import random
 from datetime import datetime
 import json
 from argparse import Namespace
+import os
 
+PATH_PRICE = 'data/eth_daily.csv'
 DIR_NEWS  = 'data/gnews'
 PATH_TXN_STAT = 'data/eth_number_of_transactions.csv'
 PRICE_TIME_FMT = "%Y-%m-%d %H:%M:%S UTC"
@@ -18,13 +20,25 @@ GAS_FEE = GAS_LIMITS * GAS_PRICE * 1e-9  # eth per txn
 EX_RATE = 4e-3  # exchange fee = txn_amount * ex_rate
 # GAS_FEE = 0
 # EX_RATE = 0
+SMA_PERIODS = [5, 10, 15, 20, 30]
 
 
 class ETHTradingEnv:
     def __init__(self, args):
-        ym = args.ym
-        path_price = f'data/eth_{ym}.csv'
-        self.data = pd.read_csv(path_price)
+        starting_date, ending_date = args.starting_date, args.ending_date
+        df = pd.read_csv(PATH_PRICE)
+        df['date'] = pd.to_datetime(df['snapped_at'], format=PRICE_TIME_FMT)
+        # SMA
+        for period in SMA_PERIODS:
+            df[f'SMA_{period}'] = df['open'].rolling(window=period).mean()
+            df[f'STD_{period}'] = df['open'].rolling(window=period).std()
+        # MACD and Signal Line
+        df['EMA_12'] = df['open'].ewm(span=12, adjust=False).mean()
+        df['EMA_26'] = df['open'].ewm(span=26, adjust=False).mean()
+        df['MACD'] = df['EMA_12'] - df['EMA_26']
+        df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        self.data = df[(df['date'] >= starting_date) & (df['date'] <= ending_date)]  # only use ending_date for open price
+        
         self.txn_stat = pd.read_csv(PATH_TXN_STAT)
         self.txn_stat['date'] = pd.to_datetime(self.txn_stat['Date'], format="%d/%m/%y %H:%M")  # 27/1/24 0:00
         self.total_steps = len(self.data)
@@ -67,15 +81,17 @@ class ETHTradingEnv:
 
         # today's txn stats
         txn_stat = self.txn_stat[self.txn_stat['date'] == parsed_time]
-        num_txns = txn_stat['Number of transactions'].values[0]
-        if first_day:
+        if first_day or txn_stat.empty:
             num_txns = 'N/A'
+        else:
+            num_txns = txn_stat['Number of transactions'].values[0]
 
         # today's news
         news_path = f"{DIR_NEWS}/{year}-{str(month).zfill(2)}-{str(day).zfill(2)}.json"
-        news = json.load(open(news_path))
-        if first_day:
+        if first_day or not os.path.exists(news_path):
             news = 'N/A'
+        else:
+            news = json.load(open(news_path))
 
         close_state = {  # selectively used in prompt
             'cash': self.cash,
@@ -176,7 +192,9 @@ class ETHTradingEnv:
 
 
 if __name__ == "__main__":
-    args = Namespace(ym='202401')
+    # args = Namespace(starting_date='2023-02-01', ending_date='2024-02-01')
+    # args = Namespace(starting_date='2023-02-01', ending_date='2023-03-01')
+    args = Namespace(starting_date='2024-01-01', ending_date='2024-02-01')
     env = ETHTradingEnv(args)
     ACTIONS = np.arange(-1, 1.1, 0.2).tolist()
     # ACTIONS = [1]
@@ -184,17 +202,10 @@ if __name__ == "__main__":
     print(f"init state: {state}, info: {info}, step: {env.current_step} \n")
     while not done:
         action = random.choice(ACTIONS)
-        action = '''
-Based on the given context, it is evident that the market trend has been fluctuating with signals to buy and sell ETH. The technical indicator MACD signal has been alternating between buy and sell, indicating a volatile market. Additionally, news summaries suggest a positive outlook for Ethereum, with mentions of potential ETF approvals and price surges.
-
-Given the market volatility and positive news sentiment, I would recommend taking a cautious approach and closely monitoring the market trends. In this scenario, I would suggest selling a portion of the ETH holdings to capitalize on the price surges and potential profits.
-
-Action: 0.50 (Sell 50% of ETH holdings)'''
         state, reward, done, info = env.step(action)
         print(f"Action: {action}")
         print_state = {k: v for k, v in state.items() if k != 'news'}
         # print_state['news'] = [{'id': item['id'], 'title': '.', 'summary': '.'} for item in state['news']]
         print(f"State: {print_state}, reward: {reward}, done: {done}, info: {info} \n")
-        break
     roi = state['roi']
     print(f"ROI: {roi*100:.2f}%")
