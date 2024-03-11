@@ -54,6 +54,7 @@ def run_strategy(strategy, file_path, sargs):
                 current_signal = 'buy'
             elif open_price < row[sma_column]:
                 current_signal = 'sell'
+                
             action = 0
             if current_signal != previous_signal:
                 if current_signal == 'buy' and cash > 0:
@@ -62,6 +63,22 @@ def run_strategy(strategy, file_path, sargs):
                     action = ratio
             previous_signal = current_signal
                 
+        elif strategy == 'SLMA':
+            ratio = sargs['ratio']
+            current_signal = 'hold'
+            if row[short] < row[long]:
+                current_signal = 'buy'
+            elif row[short] > row[long]:
+                current_signal = 'sell'
+
+            action = 0
+            if current_signal != previous_signal:
+                if current_signal == 'buy':
+                    action = -ratio
+                elif current_signal == 'sell' and eth_held > 0:
+                    action = ratio
+            previous_signal = current_signal
+
         elif strategy == 'MACD':
             ratio = sargs['ratio']
             current_signal = 'hold'
@@ -69,6 +86,7 @@ def run_strategy(strategy, file_path, sargs):
                 current_signal = 'buy'
             elif row['MACD'] > row['Signal_Line']:
                 current_signal = 'sell'
+
             action = 0
             if current_signal != previous_signal:
                 if current_signal == 'buy' and cash > 0:
@@ -77,21 +95,31 @@ def run_strategy(strategy, file_path, sargs):
                     action = ratio
             previous_signal = current_signal
 
-        elif strategy == 'MAC':
+        elif strategy == 'BollingerBands':
+            period = sargs['period']  # e.g., 20 for a 20-day SMA
+            multiplier = sargs['multiplier']  # Commonly set to 2
             ratio = sargs['ratio']
+            sma = row[f'SMA_{period}']
+            sd = row[f'STD_{period}']
+
+            
+            upper_band = sma + (sd * multiplier)
+            lower_band = sma - (sd * multiplier)
+
             current_signal = 'hold'
-            if row[short] < row[long]:
+            if open_price < lower_band:
                 current_signal = 'buy'
-            elif row[short] > row[long]:
+            elif open_price > upper_band:
                 current_signal = 'sell'
+
             action = 0
             if current_signal != previous_signal:
-                if current_signal == 'buy':
+                if current_signal == 'buy' and cash > 0:
                     action = -ratio
                 elif current_signal == 'sell' and eth_held > 0:
                     action = ratio
             previous_signal = current_signal
-            
+
         elif strategy == 'buy':
             action = 0
             if cash > 0:
@@ -105,19 +133,7 @@ def run_strategy(strategy, file_path, sargs):
         else:
             raise ValueError('Invalid strategy')
 
-        # # uniform action entry
-        # if -1 <= action < 0 and eth_held > 0:  # Sell ETH
-        #     eth_diff = abs(action) * eth_held
-        #     cash_diff = eth_diff * open_price
-        #     eth_held -= eth_diff
-        #     cash += cash_diff
-        #     cash -= GAS_FEE * open_price + cash_diff * EX_RATE
-        # elif 0 < action <= 1 and cash > 0:  # Buy ETH
-        #     cash_diff = action * cash
-        #     eth_diff = cash_diff / open_price
-        #     cash -= cash_diff
-        #     eth_held += eth_diff
-        #     cash -= GAS_FEE * open_price + cash_diff * EX_RATE
+        # uniform action entry
         state, reward, done, info = env.step(action)
         if done:
             break
@@ -182,7 +198,7 @@ print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')
 
 
 print()
-strategy = 'MAC'
+strategy = 'SLMA'
 roi_val = defaultdict(float)
 for ym in yms_val:
 # for ym in yms_all:
@@ -207,6 +223,22 @@ for ym in yms_test:
     sargs = {'ratio': ratio, 'short': short, 'long': long, 'ym': ym}
     roi = run_strategy(strategy, file_path, sargs)
     print(f'{strategy}, Short: {short}, Long: {long}, Time: {ym}, ROI: {roi*100:.2f}%')
+    roi_test.append(roi)
+roi_test = np.array(roi_test) * 100
+print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')
+
+
+print()
+strategy = 'BollingerBands'
+period = 20
+multiplier = 2
+roi_test = []
+for ym in yms_test:
+    file_path = f'../data/eth_{ym}.csv'
+    ratio = 1
+    sargs = {'period': period, 'multiplier': multiplier, 'ratio': ratio, 'ym': ym}
+    roi = run_strategy(strategy, file_path, sargs)
+    print(f'{strategy}, Period: {period}, Multiplier: {multiplier}, Time: {ym}, ROI: {roi*100:.2f}%')
     roi_test.append(roi)
 roi_test = np.array(roi_test) * 100
 print(f'ROI: {roi_test.mean():.2f}+-{roi_test.std():.2f}')

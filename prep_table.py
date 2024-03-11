@@ -15,6 +15,7 @@ if __name__ == '__main__':
     # SMA
     for period in sma_periods:
         df[f'SMA_{period}'] = df['open'].rolling(window=period).mean()
+        df[f'STD_{period}'] = df['open'].rolling(window=period).std()
 
     # MACD and Signal Line
     df['EMA_12'] = df['open'].ewm(span=12, adjust=False).mean()
