@@ -8,6 +8,7 @@ from eth_env import ETHTradingEnv
 from argparse import Namespace
 
 strategies = ['SMA', 'MACD']
+# strategies = ['SMA', 'MACD', 'SLMA', 'BollingerBands', 'buy_and_hold', 'optimal', 'LSTM', 'Multimodal']
 sma_periods = [5, 10, 15, 20, 30]
 dates = ['2022-02-01','2023-02-01', '2024-02-01']
 VAL_START, VAL_END = dates[-3], dates[-2]
@@ -42,6 +43,7 @@ for mi in range(len(dates)-1):
     print('open, max, min, close:', [f'{s:.2f}' for s in stat])
     # df_m.to_csv(f'data/eth_f'{y}{m}'.csv', index=False)
 print()
+
 
 
 # 1st strategy: Simple MA 
@@ -193,6 +195,68 @@ def run_strategy(strategy, sargs):
     result_str = f'Total IRR: {total_irr*100:.2f}%, Month Mean: {month_irr_mean:.2f}%, Month Std: {month_irr_std:.2f}%, Sharp Ratio: {result["sharp_ratio"]:.2f}'
     print(result_str)
 
+# LSTM strategy
+def create_dataset(dataset, look_back=1):
+    X, Y = [], []
+    for i in range(len(dataset)-look_back-1):
+        a = dataset[i:(i+look_back), 0]
+        X.append(a)
+        Y.append(dataset[i + look_back, 0])
+    return np.array(X), np.array(Y)
+
+def train_lstm_model(data, look_back):
+    # Scale the data
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    data_scaled = scaler.fit_transform(data)
+
+    # Create the dataset
+    X, Y = create_dataset(data_scaled, look_back)
+
+    # Reshape input to be [samples, time steps, features]
+    X = np.reshape(X, (X.shape[0], 1, X.shape[1]))
+
+    # Split the data into training and test sets
+    train_size = int(len(X) * 0.67)
+    test_size = len(X) - train_size
+    trainX, testX = X[0:train_size], X[train_size:len(X)]
+    trainY, testY = Y[0:train_size], Y[train_size:len(Y)]
+
+    # Create and fit the LSTM network
+    model = Sequential()
+    model.add(LSTM(4, input_shape=(1, look_back)))
+    model.add(Dense(1))
+    model.compile(loss='mean_squared_error', optimizer='adam')
+    model.fit(trainX, trainY, epochs=100, batch_size=1, verbose=2)
+
+    return model, scaler, trainX, trainY, testX, testY
+
+# Add LSTM to the strategies
+strategies.append('LSTM')
+
+# Define the look_back window
+look_back = 1
+
+# LSTM strategy implementation
+if strategy == 'LSTM':
+    data = df['open'].values.reshape(-1, 1)
+    model, scaler, trainX, trainY, testX, testY = train_lstm_model(data, look_back)
+
+    # Predicting with the LSTM model
+    trainPredict = model.predict(trainX)
+    testPredict = model.predict(testX)
+
+    # Invert predictions
+    trainPredict = scaler.inverse_transform(trainPredict)
+    trainY = scaler.inverse_transform([trainY])
+    testPredict = scaler.inverse_transform(testPredict)
+    testY = scaler.inverse_transform([testY])
+
+    # Calculate root mean squared error
+    trainScore = np.sqrt(np.mean((trainPredict[:,0]-trainY[0])**2))
+    print(f'Train Score: {trainScore:.2f} RMSE')
+    testScore = np.sqrt(np.mean((testPredict[:,0]-testY[0])**2))
+    print(f'Test Score: {testScore:.2f} RMSE')
+    
 
 # strategy = 'optimal'
 # print(strategy)
