@@ -7,13 +7,16 @@ from collections import defaultdict
 from eth_env import ETHTradingEnv
 from argparse import Namespace
 
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.linear_model import LinearRegression
+
 strategies = ['SMA', 'MACD']
 # strategies = ['SMA', 'MACD', 'SLMA', 'BollingerBands', 'buy_and_hold', 'optimal', 'LSTM', 'Multimodal']
 sma_periods = [5, 10, 15, 20, 30]
 dates = ['2022-02-01','2023-02-01', '2024-02-01']
 VAL_START, VAL_END = dates[-3], dates[-2]
 TEST_START, TEST_END = dates[-2], dates[-1]
-RATIO = 1.0  # txn amount ratio
+RATIO = 0.5 # txn amount ratio
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
@@ -44,7 +47,58 @@ for mi in range(len(dates)-1):
     # df_m.to_csv(f'data/eth_f'{y}{m}'.csv', index=False)
 print()
 
+# create dataset code for lstm
+def create_dataset(dataset, look_back=5):
+    X, Y = [], []
+    for i in range(len(dataset)-look_back):
+        a = dataset[i:(i+look_back), 0]
+        X.append(a)
+        Y.append(dataset[i + look_back, 0])
+    return np.array(X), np.array(Y)
 
+
+# LSTM strategy function
+def lstm_strategy(df, start_date, end_date, look_back=5):
+    # Filter the data
+    data = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
+    data = data['open'].values.reshape(-1, 1)
+    
+    # Scale the data
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    data_scaled = scaler.fit_transform(data)
+    
+    # Create the dataset
+    X, Y = create_dataset(data_scaled, look_back)
+    
+    # Reshape X for sklearn compatibility
+    X = X.reshape(X.shape[0], look_back)
+    
+    # Split the data into training and test sets
+    train_size = int(len(X) * 0.67)
+    trainX, trainY = X[:train_size], Y[:train_size]
+    
+    # Define and train the linear regression model
+    model = LinearRegression()
+    model.fit(trainX, trainY)
+    
+    # Make predictions
+    last_train_batch = trainX[-1:].reshape(1, look_back)
+    next_day_prediction = model.predict(last_train_batch)
+    next_day_prediction = scaler.inverse_transform(next_day_prediction.reshape(-1, 1))
+    current_price = scaler.inverse_transform(trainY[-1].reshape(-1, 1))
+    
+    # Decide action based on prediction, buy, sell or hold
+    if next_day_prediction > current_price:
+        action = 'Buy'
+    elif next_day_prediction < current_price:
+        action = 'Sell'
+    else:
+        action = 0
+    
+    return action
+
+    
+    
 
 # 1st strategy: Simple MA 
 # when the asset's open price is below the its SMA, and the volume is above the its SMA it's a buying signal, and vice versa for selling.
@@ -58,6 +112,10 @@ print()
 # Otherwise, the trend is shiftting up, and it's a buy signal, it's also called the golden cross.
     
 # 4th strategy: Bollinger Bands
+
+
+
+
 def run_strategy(strategy, sargs):
     env = ETHTradingEnv(Namespace(starting_date=sargs['starting_date'], ending_date=sargs['ending_date']))
     df_tmp = df[(df['date'] >= sargs['starting_date']) & (df['date'] <= sargs['ending_date'])]
@@ -164,6 +222,17 @@ def run_strategy(strategy, sargs):
             action = 0
             if cash > 0:
                 action = -1
+        
+        # here to add LSTM strategy
+        elif strategy == 'LSTM':
+            action = lstm_strategy(df, sargs['starting_date'], sargs['ending_date'], look_back=1)
+            ratio = sargs['ratio']
+            if action == 'Buy' and cash > 0:
+                action = -ratio
+            elif action == 'Sell' and eth_held > 0:
+                action = ratio
+            else:
+                action = 0
 
         elif strategy == 'optimal':
             next_open = df_tmp.iloc[index+1]['open']
@@ -194,69 +263,11 @@ def run_strategy(strategy, sargs):
     }
     result_str = f'Total IRR: {total_irr*100:.2f}%, Month Mean: {month_irr_mean:.2f}%, Month Std: {month_irr_std:.2f}%, Sharp Ratio: {result["sharp_ratio"]:.2f}'
     print(result_str)
-
-# LSTM strategy
-def create_dataset(dataset, look_back=1):
-    X, Y = [], []
-    for i in range(len(dataset)-look_back-1):
-        a = dataset[i:(i+look_back), 0]
-        X.append(a)
-        Y.append(dataset[i + look_back, 0])
-    return np.array(X), np.array(Y)
-
-def train_lstm_model(data, look_back):
-    # Scale the data
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    data_scaled = scaler.fit_transform(data)
-
-    # Create the dataset
-    X, Y = create_dataset(data_scaled, look_back)
-
-    # Reshape input to be [samples, time steps, features]
-    X = np.reshape(X, (X.shape[0], 1, X.shape[1]))
-
-    # Split the data into training and test sets
-    train_size = int(len(X) * 0.67)
-    test_size = len(X) - train_size
-    trainX, testX = X[0:train_size], X[train_size:len(X)]
-    trainY, testY = Y[0:train_size], Y[train_size:len(Y)]
-
-    # Create and fit the LSTM network
-    model = Sequential()
-    model.add(LSTM(4, input_shape=(1, look_back)))
-    model.add(Dense(1))
-    model.compile(loss='mean_squared_error', optimizer='adam')
-    model.fit(trainX, trainY, epochs=100, batch_size=1, verbose=2)
-
-    return model, scaler, trainX, trainY, testX, testY
-
-# Add LSTM to the strategies
-strategies.append('LSTM')
-
-# Define the look_back window
-look_back = 1
-
-# LSTM strategy implementation
-if strategy == 'LSTM':
-    data = df['open'].values.reshape(-1, 1)
-    model, scaler, trainX, trainY, testX, testY = train_lstm_model(data, look_back)
-
-    # Predicting with the LSTM model
-    trainPredict = model.predict(trainX)
-    testPredict = model.predict(testX)
-
-    # Invert predictions
-    trainPredict = scaler.inverse_transform(trainPredict)
-    trainY = scaler.inverse_transform([trainY])
-    testPredict = scaler.inverse_transform(testPredict)
-    testY = scaler.inverse_transform([testY])
-
-    # Calculate root mean squared error
-    trainScore = np.sqrt(np.mean((trainPredict[:,0]-trainY[0])**2))
-    print(f'Train Score: {trainScore:.2f} RMSE')
-    testScore = np.sqrt(np.mean((testPredict[:,0]-testY[0])**2))
-    print(f'Test Score: {testScore:.2f} RMSE')
     
+
+strategy = 'LSTM'
+print(strategy)
+run_strategy(strategy, {'ratio': RATIO, 'starting_date': VAL_START, 'ending_date': VAL_END})
 
 # strategy = 'optimal'
 # print(strategy)
@@ -286,19 +297,19 @@ if strategy == 'LSTM':
 # run_strategy(strategy, sargs)
 
 
-strategy = 'SLMA'
-# for i in range(len(sma_periods)-1):
-#     for j in range(i+1, len(sma_periods)):
-#         short = f'SMA_{sma_periods[i]}'
-#         long = f'SMA_{sma_periods[j]}'
-#         sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': VAL_START, 'ending_date': VAL_END}
-#         print(f'{strategy}, Short: {short}, Long: {long}')
-#         run_strategy(strategy, sargs)
+# strategy = 'SLMA'
+# # for i in range(len(sma_periods)-1):
+# #     for j in range(i+1, len(sma_periods)):
+# #         short = f'SMA_{sma_periods[i]}'
+# #         long = f'SMA_{sma_periods[j]}'
+# #         sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': VAL_START, 'ending_date': VAL_END}
+# #         print(f'{strategy}, Short: {short}, Long: {long}')
+# #         run_strategy(strategy, sargs)
 
-short, long = 'SMA_20', 'SMA_30'
-sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': TEST_START, 'ending_date': TEST_END}
-print(f'{strategy}, Short: {short}, Long: {long}')
-run_strategy(strategy, sargs)
+# short, long = 'SMA_20', 'SMA_30'
+# sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': TEST_START, 'ending_date': TEST_END}
+# print(f'{strategy}, Short: {short}, Long: {long}')
+# run_strategy(strategy, sargs)
 
 
 # strategy = 'MACD'
