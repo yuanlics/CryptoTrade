@@ -10,6 +10,12 @@ from argparse import Namespace
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.linear_model import LinearRegression
 
+import torch
+import torch.nn as nn
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+from torch.utils.data import DataLoader, TensorDataset
+
 strategies = ['SMA', 'MACD']
 # strategies = ['SMA', 'MACD', 'SLMA', 'BollingerBands', 'buy_and_hold', 'optimal', 'LSTM', 'Multimodal']
 sma_periods = [5, 10, 15, 20, 30]
@@ -47,17 +53,84 @@ for mi in range(len(dates)-1):
     # df_m.to_csv(f'data/eth_f'{y}{m}'.csv', index=False)
 print()
 
-# create dataset code for lstm
+# # create dataset code for lstm
+# def create_dataset(dataset, look_back=1):
+#     X, Y = [], []
+#     for i in range(len(dataset)-look_back):
+#         a = dataset[i:(i+look_back), 0]
+#         X.append(a)
+#         Y.append(dataset[i + look_back, 0])
+#     return np.array(X), np.array(Y)
+
 def create_dataset(dataset, look_back=5):
     X, Y = [], []
     for i in range(len(dataset)-look_back):
-        a = dataset[i:(i+look_back), 0]
+        a = dataset[i:(i+look_back), :]
         X.append(a)
         Y.append(dataset[i + look_back, 0])
-    return np.array(X), np.array(Y)
+    return torch.tensor(np.array(X), dtype=torch.float32), torch.tensor(np.array(Y), dtype=torch.float32).view(-1, 1)
 
 
-# LSTM strategy function
+
+class LSTMModel(nn.Module):
+    def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
+        super(LSTMModel, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+        
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+        
+    def forward(self, x):
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
+        out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
+        out = self.fc(out[:, -1, :]) 
+        return out
+
+# # LSTM strategy function
+# def lstm_strategy(df, start_date, end_date, look_back=1):
+#     # Filter the data
+#     data = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
+#     data = data['open'].values.reshape(-1, 1)
+    
+#     # Scale the data
+#     scaler = MinMaxScaler(feature_range=(0, 1))
+#     data_scaled = scaler.fit_transform(data)
+    
+#     # Create the dataset
+#     X, Y = create_dataset(data_scaled, look_back)
+#     # dataset = TensorDataset(X, Y)
+    
+    
+#     # Reshape X for sklearn compatibility
+#     X = X.reshape(X.shape[0], look_back)
+    
+#     # Split the data into training and test sets
+#     train_size = int(len(X) * 0.67)
+#     trainX, trainY = X[:train_size], Y[:train_size]
+    
+#     # Define and train the linear regression model
+#     model = LinearRegression()
+#     model.fit(trainX, trainY)
+    
+#     # Make predictions
+#     last_train_batch = trainX[-1:].reshape(1, look_back)
+#     next_day_prediction = model.predict(last_train_batch)
+#     next_day_prediction = scaler.inverse_transform(next_day_prediction.reshape(-1, 1))
+#     current_price = scaler.inverse_transform(trainY[-1].reshape(-1, 1))
+    
+#     # Decide action based on prediction, buy, sell or hold
+#     if next_day_prediction > current_price:
+#         action = 'Buy'
+#     elif next_day_prediction < current_price:
+#         action = 'Sell'
+#     else:
+#         action = 0
+    
+#     return action
+
+ 
 def lstm_strategy(df, start_date, end_date, look_back=5):
     # Filter the data
     data = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
@@ -66,39 +139,49 @@ def lstm_strategy(df, start_date, end_date, look_back=5):
     # Scale the data
     scaler = MinMaxScaler(feature_range=(0, 1))
     data_scaled = scaler.fit_transform(data)
-    
-    # Create the dataset
+    # Assuming `data_scaled` is your scaled dataset as a NumPy array
     X, Y = create_dataset(data_scaled, look_back)
-    
-    # Reshape X for sklearn compatibility
-    X = X.reshape(X.shape[0], look_back)
-    
-    # Split the data into training and test sets
-    train_size = int(len(X) * 0.67)
-    trainX, trainY = X[:train_size], Y[:train_size]
-    
-    # Define and train the linear regression model
-    model = LinearRegression()
-    model.fit(trainX, trainY)
-    
-    # Make predictions
-    last_train_batch = trainX[-1:].reshape(1, look_back)
-    next_day_prediction = model.predict(last_train_batch)
-    next_day_prediction = scaler.inverse_transform(next_day_prediction.reshape(-1, 1))
-    current_price = scaler.inverse_transform(trainY[-1].reshape(-1, 1))
-    
-    # Decide action based on prediction, buy, sell or hold
+    dataset = TensorDataset(X, Y)
+    train_loader = DataLoader(dataset, batch_size=64, shuffle=True)
+
+    # Initialize the model, loss function, and optimizer
+    model = LSTMModel(input_dim=1, hidden_dim=100, num_layers=2, output_dim=1)
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    # Training loop
+    num_epochs = 100
+    for epoch in range(num_epochs):
+        for inputs, targets in train_loader:
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
+            optimizer.step()
+        
+        if epoch % 10 == 0:
+            print(f'Epoch {epoch}, Loss: {loss.item()}')    
+            
+    # Prepare the last training batch for prediction
+    last_sequence = data_scaled[-look_back:]  # Get the last 'look_back' sequences
+    last_sequence = torch.tensor(last_sequence, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
+
+    with torch.no_grad():
+        model.eval()
+        next_day_prediction = model(last_sequence)  # Predict
+
+    next_day_prediction = scaler.inverse_transform(next_day_prediction.numpy())  # Scale back to original range
+    current_price = scaler.inverse_transform([[Y[-1].item()]])
+
+    action = 'Hold'  # Default action
     if next_day_prediction > current_price:
         action = 'Buy'
     elif next_day_prediction < current_price:
         action = 'Sell'
     else:
         action = 0
-    
-    return action
 
-    
-    
+    return action
 
 # 1st strategy: Simple MA 
 # when the asset's open price is below the its SMA, and the volume is above the its SMA it's a buying signal, and vice versa for selling.
@@ -225,7 +308,7 @@ def run_strategy(strategy, sargs):
         
         # here to add LSTM strategy
         elif strategy == 'LSTM':
-            action = lstm_strategy(df, sargs['starting_date'], sargs['ending_date'], look_back=1)
+            action = lstm_strategy(df, sargs['starting_date'], sargs['ending_date'], look_back=5)
             ratio = sargs['ratio']
             if action == 'Buy' and cash > 0:
                 action = -ratio
