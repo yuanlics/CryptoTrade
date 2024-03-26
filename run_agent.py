@@ -32,8 +32,8 @@ def get_args():
     parser.add_argument("--model", type=str, default='gpt-3.5-turbo', help="gpt-3.5-turbo, gpt-4-turbo-preview")
 
     # args = parser.parse_args()
-    # debug_args = '--use_news 1 --use_tech 1 --use_txnstat 1 --use_reflection 1'.split(' ')
-    debug_args = '--use_news 0 --use_tech 0 --use_txnstat 0 --use_reflection 0'.split(' ')
+    debug_args = '--use_news 1 --use_tech 1 --use_txnstat 1 --use_reflection 1'.split(' ')
+    # debug_args = '--use_news 0 --use_tech 0 --use_txnstat 0 --use_reflection 0'.split(' ')
     # debug_args = '--use_news 1 --use_tech 0 --use_txnstat 0 --use_reflection 0'.split(' ')
     # debug_args = '--use_news 0 --use_tech 1 --use_txnstat 0 --use_reflection 0'.split(' ')
     # debug_args = '--use_news 0 --use_tech 0 --use_txnstat 1 --use_reflection 0'.split(' ')
