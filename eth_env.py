@@ -9,7 +9,7 @@ import os
 
 PATH_PRICE = 'data/eth_daily.csv'
 DIR_NEWS  = 'data/gnews'
-PATH_TXN_STAT = 'data/eth_number_of_transactions.csv'
+PATH_TXN_STAT = 'data/eth_more_transaction_statistics.csv'
 PRICE_TIME_FMT = "%Y-%m-%d %H:%M:%S UTC"
 STARTING_NET_WORTH = 1_000_000
 STARTING_CASH_RATIO = 0.5
@@ -40,7 +40,7 @@ class ETHTradingEnv:
         self.data = df[(df['date'] >= starting_date) & (df['date'] <= ending_date)]  # only use ending_date for open price
         
         self.txn_stat = pd.read_csv(PATH_TXN_STAT)
-        self.txn_stat['date'] = pd.to_datetime(self.txn_stat['Date'], format="%d/%m/%y %H:%M")  # 27/1/24 0:00
+        self.txn_stat['date'] = pd.to_datetime(self.txn_stat['day'], format="%d/%m/%y %H:%M")  # 27/1/24 0:00
         self.total_steps = len(self.data)
         self.starting_net_worth = STARTING_NET_WORTH
         self.starting_cash_ratio = STARTING_CASH_RATIO
@@ -84,7 +84,12 @@ class ETHTradingEnv:
         if first_day or txn_stat.empty:
             num_txns = 'N/A'
         else:
-            num_txns = txn_stat['Number of transactions'].values[0]
+            num_txns = txn_stat['total_transactions'].values[0]
+            unique_addrs = txn_stat['unique_addresses'].values[0]
+            value_transferred = txn_stat['total_value_transferred'].values[0]
+            avg_gas_price = txn_stat['average_gas_price'].values[0]
+            total_gas_used = txn_stat['total_gas_used'].values[0]
+            successful_txns = txn_stat['successful_transactions'].values[0]
 
         # today's news
         news_path = f"{DIR_NEWS}/{year}-{str(month).zfill(2)}-{str(day).zfill(2)}.json"
@@ -109,6 +114,7 @@ class ETHTradingEnv:
             'macd_signal': macd_signal,
             'num_txns': num_txns,
             'news': news,
+            'date': date,
         }
         return close_state
 
@@ -137,7 +143,7 @@ class ETHTradingEnv:
         raw_action = action
         if type(action) == str:
             # actions = re.findall(r"[-+]?\d*\.\d+|\d+", action)
-            actions = re.findall(r"-?(?:0(?:\.\d{2})|1\.00)", action)
+            actions = re.findall(r"-?(?:0(?:\.\d{1})|1\.0)", action)
             
             if len(actions) == 0:
                 print(f'ERROR: Invalid llm response: {action}. Set to no action.')

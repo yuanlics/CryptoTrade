@@ -36,17 +36,31 @@ def eth_run(env, base_prompt, memory, starting_state, args):
         print(f'Init state: {print_state}')
     cur_step = 0
     while cur_step < max_steps:
-        prompt = str(env_history)
-        action = llm(prompt, model=model).strip()
+        use_news = args.use_news
+        use_reflection = args.use_reflection
+        news_s, price_s, reflection_s, template_s = env_history.get_prompt()
+
+        if use_news:
+            news_analysis = llm(news_s, model=model).strip()
+        else:
+            news_analysis = 'N/A'
+        if use_reflection:
+            reflection = llm(reflection_s, model=model).strip()
+        else:
+            reflection = 'N/A'
+        onchain_analysis = llm(price_s, model=model).strip()
+        trader_prompt = template_s.format(news_analysis, onchain_analysis, reflection)
+
+        action = llm(trader_prompt, model=model).strip()
         state, reward, done, info = env.step(action)
         raw_action = info['raw_action']
-        action = info['actual_action']
-        action = f'{action:.2f}'
-        env_history.add("action", action)
+        actual_action = f"{info['actual_action']:.1f}"
+        env_history.add("prompt", trader_prompt)
+        env_history.add("action", actual_action)
         env_history.add("state", state)
         if to_print:
             print_state = {k: v for k, v in state.items() if k != 'news'}
-            print(f'Action: {action}')
+            print(f'Action: {actual_action}')
             print(f'Reasoning: {raw_action}')
             print(f'State: {print_state}')
         if done:
@@ -102,10 +116,7 @@ def run_trial(
 # - **To Sell:** Indicate a negative decimal fraction of your ETH holdings you wish to sell, capturing your strategic decision (e.g., -0.40 for 40%).\
 # - **To Hold:** A decision to hold requires no action but is an active strategy based on your market analysis.\
 # **Precision in Decision:** Ensure your decision is presented as a two-decimal value within the [-1, 1] range. This precision reflects the nuanced analysis and strategic thought behind your decision."
-        base_prompt = f'You are an experienced crypto currency trader and you are trying to maximize your overall profit by trading ETH. In each day, you will make an action represented by a precision-two float value in range [-1,1], such as -0.35, 0.77, -1.00, 1.00, 0.00, 0.95, -0.82, and so on. If action is in negative range [-1,0), you will spend this portion of cash at hand to buy ETH. If action is in positive range (0,1], you will sell this portion of holding ETH at hand. If action is 0, no action is taken and no transaction fee is charged. You will start with {info["starting_cash"]} dollars. Your action should depend on your judgement on the market trend. \n'
-        # 'A small transaction fee is charged based on the transaction amount, so frequent large transactions are penalized.'
-
-        final_env_history, is_success = eth_run(env, base_prompt, env_config["memory"] if use_memory else [], starting_state, args=args)
+        final_env_history, is_success = eth_run(env, '', env_config["memory"] if use_memory else [], starting_state, args=args)
 
         # update env config
         if is_success:
