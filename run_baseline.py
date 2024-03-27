@@ -16,10 +16,12 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader, TensorDataset
 
+device = 'cuda:7'
 strategies = ['SMA', 'MACD']
 # strategies = ['SMA', 'MACD', 'SLMA', 'BollingerBands', 'buy_and_hold', 'optimal', 'LSTM', 'Multimodal']
 sma_periods = [5, 10, 15, 20, 30]
-dates = ['2022-02-01','2023-02-01', '2024-02-01']
+# dates = ['2022-02-01','2023-02-01', '2024-02-01']
+dates = ['2023-12-01','2024-01-01', '2024-02-01']
 VAL_START, VAL_END = dates[-3], dates[-2]
 TEST_START, TEST_END = dates[-2], dates[-1]
 RATIO = 0.5 # txn amount ratio
@@ -82,8 +84,8 @@ class LSTMModel(nn.Module):
         self.fc = nn.Linear(hidden_dim, output_dim)
         
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_().to(x.device)
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_().to(x.device)
         out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
         out = self.fc(out[:, -1, :]) 
         return out
@@ -145,7 +147,7 @@ def lstm_strategy(df, start_date, end_date, look_back=5):
     train_loader = DataLoader(dataset, batch_size=64, shuffle=True)
 
     # Initialize the model, loss function, and optimizer
-    model = LSTMModel(input_dim=1, hidden_dim=100, num_layers=2, output_dim=1)
+    model = LSTMModel(input_dim=1, hidden_dim=100, num_layers=2, output_dim=1).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
@@ -153,6 +155,7 @@ def lstm_strategy(df, start_date, end_date, look_back=5):
     num_epochs = 100
     for epoch in range(num_epochs):
         for inputs, targets in train_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
@@ -164,11 +167,12 @@ def lstm_strategy(df, start_date, end_date, look_back=5):
             
     # Prepare the last training batch for prediction
     last_sequence = data_scaled[-look_back:]  # Get the last 'look_back' sequences
-    last_sequence = torch.tensor(last_sequence, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
+    last_sequence = torch.tensor(last_sequence, dtype=torch.float32).unsqueeze(0).to(device)  # Add batch dimension
 
     with torch.no_grad():
         model.eval()
         next_day_prediction = model(last_sequence)  # Predict
+        next_day_prediction = next_day_prediction.cpu()  # Convert to NumPy array
 
     next_day_prediction = scaler.inverse_transform(next_day_prediction.numpy())  # Scale back to original range
     current_price = scaler.inverse_transform([[Y[-1].item()]])
@@ -206,10 +210,11 @@ def run_strategy(strategy, sargs):
     state, reward, done, info = env.reset()  # only use env to act and track profit
 
     starting_net_worth = state['net_worth']
-    month_irrs = []
+    irrs = []
     previous_month = int(sargs['starting_date'].split('-')[1])
     month_starting_net_worth = state['net_worth']
     previous_signal = None  # Track the previous day signal
+    previous_net_worth = starting_net_worth
     # Iterate through each row in the DataFrame to simulate trading
     for index, row in df_tmp.iterrows():
         open_price = state['open']
@@ -218,10 +223,12 @@ def run_strategy(strategy, sargs):
         net_worth = state['net_worth']
         date = row['date']
         y, m, d = date.year, date.month, date.day
-        if previous_month != m:
-            month_irrs.append((net_worth / month_starting_net_worth) - 1)
-            month_starting_net_worth = net_worth
-            previous_month = m
+        irrs.append((net_worth / previous_net_worth) - 1)
+        previous_net_worth = net_worth
+        # if previous_month != m:
+        #     irrs.append((net_worth / month_starting_net_worth) - 1)
+        #     month_starting_net_worth = net_worth
+        #     previous_month = m
         if done:
             break
 
@@ -334,17 +341,17 @@ def run_strategy(strategy, sargs):
 
     net_worth = state['net_worth']
     total_irr = (net_worth / starting_net_worth) - 1
-    month_irrs = np.array(month_irrs) * 100
-    month_irr_mean = np.mean(month_irrs)
-    month_irr_std = np.std(month_irrs)
+    irrs = np.array(irrs) * 100
+    irr_mean = np.mean(irrs)
+    irr_std = np.std(irrs)
     month_risk_free_rate = 0.01 * 100  # e.g., US treasury bond
     result = {
         'total_irr': total_irr,
-        'month_irr_mean': month_irr_mean,
-        'month_irr_std': month_irr_std,
-        'sharp_ratio': (month_irr_mean - month_risk_free_rate) / month_irr_std,
+        'irr_mean': irr_mean,
+        'irr_std': irr_std,
+        'sharp_ratio': (irr_mean - month_risk_free_rate) / irr_std,
     }
-    result_str = f'Total IRR: {total_irr*100:.2f}%, Month Mean: {month_irr_mean:.2f}%, Month Std: {month_irr_std:.2f}%, Sharp Ratio: {result["sharp_ratio"]:.2f}'
+    result_str = f'Total IRR: {total_irr*100:.2f}%, Month Mean: {irr_mean:.2f}%, Month Std: {irr_std:.2f}%, Sharp Ratio: {result["sharp_ratio"]:.2f}'
     print(result_str)
     
 

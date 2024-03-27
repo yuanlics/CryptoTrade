@@ -50,6 +50,8 @@ class ETHTradingEnv:
         next_open_price = next_day['open']
         close_net_worth = self.cash + self.eth_held * next_open_price
         close_roi = close_net_worth / self.starting_net_worth - 1  # return on investment
+        today_roi = close_net_worth / self.last_net_worth - 1
+        self.last_net_worth = close_net_worth
 
         date = today['snapped_at']
         parsed_time = datetime.strptime(date, PRICE_TIME_FMT)
@@ -104,6 +106,7 @@ class ETHTradingEnv:
             'open': next_open_price,
             'net_worth': close_net_worth,
             'roi': close_roi,
+            'today_roi': today_roi,
             'ma5': ma5,
             'ma10': ma10,
             'ma20': ma20,
@@ -124,6 +127,7 @@ class ETHTradingEnv:
         self.starting_price = today['open']
         self.cash = self.starting_net_worth * STARTING_CASH_RATIO
         self.eth_held = (self.starting_net_worth - self.cash) / self.starting_price
+        self.last_net_worth = self.starting_net_worth
         close_state = self.get_close_state(today, next_day, first_day=True)
         info = {
             'starting_cash': self.cash,

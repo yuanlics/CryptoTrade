@@ -5,6 +5,8 @@ import sys
 import json
 import yaml
 import openai
+import numpy as np
+import time
 import importlib
 from utils import Model, get_chat
 from eth_env import ETHTradingEnv
@@ -35,6 +37,7 @@ def eth_run(env, base_prompt, memory, starting_state, args):
         print_state = {k: v for k, v in starting_state.items()}
         print(f'Init state: {print_state}')
     cur_step = 0
+    irrs = []
     while cur_step < max_steps:
         use_news = args.use_news
         use_reflection = args.use_reflection
@@ -58,6 +61,7 @@ def eth_run(env, base_prompt, memory, starting_state, args):
         env_history.add("prompt", trader_prompt)
         env_history.add("action", actual_action)
         env_history.add("state", state)
+        irrs.append(state['today_roi'])
         if to_print:
             print_state = {k: v for k, v in state.items() if k != 'news'}
             print(f'Action: {actual_action}')
@@ -66,7 +70,14 @@ def eth_run(env, base_prompt, memory, starting_state, args):
         if done:
             break
         cur_step += 1
+        time.sleep(1)
     roi = state['roi']
+    irrs = np.array(irrs) * 100
+    month_irr_mean = np.mean(irrs)
+    month_irr_std = np.std(irrs)
+    month_risk_free_rate = 0.01 * 100  # e.g., US treasury bond
+    sharp_ratio = (month_irr_mean - month_risk_free_rate) / month_irr_std
+    print(f'FINAL irr: {roi*100:.2f}, sharp ratio: {sharp_ratio:.2f}')
     is_success = roi > 0.1 # modify sucess condition
     return env_history, is_success
 
