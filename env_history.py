@@ -19,12 +19,13 @@ class EnvironmentHistory:
         self._history = []
     
     def get_prompt(self) -> str:
-        window = self.args.window  # look back window for prompt
+        price_window = self.args.price_window
+        reflection_window = self.args.reflection_window
         use_tech = self.args.use_tech
         use_txnstat = self.args.use_txnstat
 
         price_s = 'You are an ETH cryptocurrency trading analyst. The recent price and auxiliary information is given in chronological order below:\n'
-        for i, item in enumerate(self._history[-window * 3:]):
+        for i, item in enumerate(self._history[-price_window * 3:]):
             if item['label'] == 'state':
                 state = item['value']
                 state_log = f'Open price: {state["open"]:.2f}'
@@ -43,14 +44,14 @@ class EnvironmentHistory:
         news_s = f"You are an ETH cryptocurrency trading analyst. You are required to analyze the following news: {state['news']}. Analyze the news and estimate the market trend accordingly."
 
         reflection_s = 'You are an ETH cryptocurrency trading analyst. Your analysis and action history is given in chronological order:\n'
-        for i, item in enumerate(self._history[-window * 3:]):
+        for i, item in enumerate(self._history[-reflection_window * 3:]):
             if item['label'] == 'prompt':
                 reflection_s += f'PROMPT:\n{item["value"]}\n'
             elif item['label'] == 'action':
                 reflection_s += f'ACTION:\n{item["value"]}\n'
             elif item['label'] == 'state':
                 reflection_s += f'DAILY RETURN:\n{item["value"]["today_roi"]}\n'
-        if len(self._history[-window:]) == 0:
+        if len(self._history[-reflection_window:]) == 0:
             reflection_s += 'N/A.\n'
         # reflection_s += 'Reflect on your recent performance and instruct your future trades from a high level, e.g., identify what information is currently more important, and what to be next, like aggresive or conversative.'
         reflection_s += 'Reflect on your recent trading performance with a focus on the effective strategies and information that led to the most successful outcomes, and the ineffective strategies and information that led to loss of profit. Identify key trends and indicators in the current cryptocurrency market that are likely to influence future trades. Also assess whether a more aggressive or conservative trading approach is warranted. '

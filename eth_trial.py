@@ -14,9 +14,9 @@ from env_history import EnvironmentHistory
 
 from typing import List, Dict, Any, Tuple
  
-def llm(prompt: str, model: Model):
+def llm(prompt, model, seed):
     try:
-        text = get_chat(prompt=prompt, model=model, temperature=0.0)  # stop_strs=['\n']
+        text = get_chat(prompt=prompt, model=model, seed=seed)  # stop_strs=['\n']
         return text
     except Exception as e:
         print(prompt)
@@ -35,6 +35,7 @@ def debug_print(s, response=None, title=''):
 def eth_run(env, base_prompt, memory, starting_state, args):
     to_print = args.to_print
     model = args.model
+    seed = args.seed
 
     if len(memory) > 3:
         env_history = EnvironmentHistory(base_prompt, starting_state, memory[-3:], [], args)
@@ -51,27 +52,27 @@ def eth_run(env, base_prompt, memory, starting_state, args):
         use_reflection = args.use_reflection
         price_s, news_s, reflection_s, template_s = env_history.get_prompt()
 
-        onchain_analysis = llm(price_s, model=model).strip()
+        onchain_analysis = llm(price_s, model, seed).strip()
         if to_print:
             print(f"********* START STEP {cur_step} *********")
             debug_print(price_s, onchain_analysis, 'ONCHAIN ANALYST')
 
         if use_news:
-            news_analysis = llm(news_s, model=model).strip()
+            news_analysis = llm(news_s, model, seed).strip()
             if to_print:
                 debug_print(news_s, news_analysis, 'NEWS ANALYST')
         else:
             news_analysis = 'N/A'
 
         if use_reflection:
-            reflection = llm(reflection_s, model=model).strip()
+            reflection = llm(reflection_s, model, seed).strip()
             if to_print:
                 debug_print(reflection_s, reflection, 'REFLECTION ANALYST')
         else:
             reflection = 'N/A'
 
         trader_prompt = template_s.format(onchain_analysis, news_analysis, reflection)
-        action = llm(trader_prompt, model=model).strip()
+        action = llm(trader_prompt, model, seed).strip()
         if to_print:
             debug_print(trader_prompt, action, 'TRADER')
 
