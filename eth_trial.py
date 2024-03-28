@@ -72,14 +72,14 @@ def eth_run(env, base_prompt, memory, starting_state, args):
             reflection = 'N/A'
 
         trader_prompt = template_s.format(onchain_analysis, news_analysis, reflection)
-        action = llm(trader_prompt, model, seed).strip()
+        trader_response = llm(trader_prompt, model, seed).strip()
         if to_print:
-            debug_print(trader_prompt, action, 'TRADER')
+            debug_print(trader_prompt, trader_response, 'TRADER')
 
-        state, reward, done, info = env.step(action)
+        state, reward, done, info = env.step(trader_response)
         raw_action = info['raw_action']
         actual_action = f"{info['actual_action']:.1f}"
-        env_history.add("prompt", trader_prompt)
+        env_history.add("trader_response", trader_response)
         env_history.add("action", actual_action)
         env_history.add("state", state)
         returns.append(state['today_roi'])

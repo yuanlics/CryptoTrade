@@ -64,24 +64,24 @@ class ETHTradingEnv:
         ma10 = next_day['SMA_10']
         ma15 = next_day['SMA_15']
         ma20 = next_day['SMA_20']
+        slma_signal = 'hold'
+        short_ma = ma15
+        long_ma = ma20
+        if short_ma > long_ma:
+            slma_signal = 'sell'
+        elif short_ma < long_ma:
+            slma_signal = 'buy'
+        
         sma = next_day[f'SMA_20']
         sd = next_day[f'STD_20']
-        
         multiplier = 2
         upper_band = sma + (sd * multiplier)
         lower_band = sma - (sd * multiplier)
-
         boll_signal = 'hold'
         if next_open_price < lower_band:
             boll_signal = 'buy'
         elif next_open_price > upper_band:
             boll_signal = 'sell'
-
-        slma_signal = 'hold'
-        if ma15 > ma20:
-            slma_signal = 'sell'
-        elif ma15 < ma20:
-            slma_signal = 'buy'
 
         macd = next_day['MACD']
         macd_signal_line = next_day['Signal_Line']
