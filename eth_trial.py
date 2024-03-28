@@ -34,7 +34,6 @@ def debug_print(s, response=None, title=''):
 
 def eth_run(env, base_prompt, memory, starting_state, args):
     to_print = args.to_print
-    max_steps = args.max_steps
     model = args.model
 
     if len(memory) > 3:
@@ -46,7 +45,8 @@ def eth_run(env, base_prompt, memory, starting_state, args):
         debug_print(print_state, None, 'INIT STATE')
     cur_step = 0
     irrs = []
-    while cur_step < max_steps:
+    done = False
+    while not done:
         use_news = args.use_news
         use_reflection = args.use_reflection
         price_s, news_s, reflection_s, template_s = env_history.get_prompt()
@@ -79,8 +79,6 @@ def eth_run(env, base_prompt, memory, starting_state, args):
             print_state = {k: v for k, v in state.items() if k != 'news'}
             debug_print(actual_action, None, 'ACTUAL ACTION')
             debug_print(print_state, None, 'STATE')
-        if done:
-            break
         cur_step += 1
         time.sleep(1)
     roi = state['roi']

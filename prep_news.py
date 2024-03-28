@@ -18,7 +18,7 @@ import time
 from datetime import date, timedelta
 
 
-RAW_DIR = 'data/ethereum_202301_202308'  # 1216 articles in 2024-01
+RAW_DIR = 'data/gnews_raw'  # 1216 articles in 2024-01
 OUTPUT_DIR = 'data/gnews'
 NEWS_TIME_FMT = "%a, %d %b %Y %H:%M:%S %Z"
 MAX_TOKENS = 256

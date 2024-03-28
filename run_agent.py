@@ -11,9 +11,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_trials", type=int, default=1, help="The number of trials to run")
     parser.add_argument("--num_envs", type=int, default=1, help="The number of environments per trial")
-    parser.add_argument("--max_steps", type=int, default=60, help="The maximum number of steps per environment")
     parser.add_argument("--run_name", type=str, default='eth_run', help="The name of the run")
-    # parser.add_argument("--ym", type=str, default='202401', help="year month")
     parser.add_argument("--is_resume", action='store_true', help="To resume run")
     parser.add_argument("--to_print", type=int, default=1, help="Print debug info")
 
