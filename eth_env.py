@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import re
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from argparse import Namespace
 import os
@@ -44,7 +44,7 @@ class ETHTradingEnv:
         self.total_steps = len(self.data)
         self.starting_net_worth = STARTING_NET_WORTH
         self.starting_cash_ratio = STARTING_CASH_RATIO
-        self.reset()
+        # self.reset()
 
     def get_close_state(self, today, next_day, first_day=False):
         next_open_price = next_day['open']
@@ -55,23 +55,20 @@ class ETHTradingEnv:
 
         date = today['snapped_at']
         parsed_time = datetime.strptime(date, PRICE_TIME_FMT)
+        if first_day:
+            parsed_time = parsed_time - timedelta(days=1)
         year, month, day = parsed_time.year, parsed_time.month, parsed_time.day
 
         # next day's opening technical indicators
         ma5 = next_day['SMA_5']
         ma10 = next_day['SMA_10']
+        ma15 = next_day['SMA_15']
         ma20 = next_day['SMA_20']
-        mac_5_20_signal = 'hold'
-        if ma5 > ma20:
-            mac_5_20_signal = 'sell'
-        elif ma5 < ma20:
-            mac_5_20_signal = 'buy'
-
-        mac_10_20_signal = 'hold'
-        if ma10 > ma20:
-            mac_10_20_signal = 'sell'
-        elif ma10 < ma20:
-            mac_10_20_signal = 'buy'
+        slma_signal = 'hold'
+        if ma15 > ma20:
+            slma_signal = 'sell'
+        elif ma15 < ma20:
+            slma_signal = 'buy'
 
         macd = next_day['MACD']
         macd_signal_line = next_day['Signal_Line']
@@ -81,10 +78,17 @@ class ETHTradingEnv:
         elif macd > macd_signal_line:
             macd_signal = 'sell'
 
+
+
         # today's txn stats
         txn_stat = self.txn_stat[self.txn_stat['date'] == parsed_time]
-        if first_day or txn_stat.empty:
+        if txn_stat.empty:
             num_txns = 'N/A'
+            unique_addrs = 'N/A'
+            value_transferred = 'N/A'
+            avg_gas_price = 'N/A'
+            total_gas_used = 'N/A'
+            successful_txns = 'N/A'
         else:
             num_txns = txn_stat['total_transactions'].values[0]
             unique_addrs = txn_stat['unique_addresses'].values[0]
@@ -95,7 +99,7 @@ class ETHTradingEnv:
 
         # today's news
         news_path = f"{DIR_NEWS}/{year}-{str(month).zfill(2)}-{str(day).zfill(2)}.json"
-        if first_day or not os.path.exists(news_path):
+        if not os.path.exists(news_path):
             news = 'N/A'
         else:
             news = json.load(open(news_path))
@@ -107,15 +111,18 @@ class ETHTradingEnv:
             'net_worth': close_net_worth,
             'roi': close_roi,
             'today_roi': today_roi,
-            'ma5': ma5,
-            'ma10': ma10,
-            'ma20': ma20,
-            'macd': macd,
-            'macd_signal_line': macd_signal_line,
-            'mac_5_20_signal': mac_5_20_signal,
-            'mac_10_20_signal': mac_10_20_signal,
-            'macd_signal': macd_signal,
-            'num_txns': num_txns,
+            'technical': {
+                'short_long_ma_signal': slma_signal,
+                'macd_signal': macd_signal,
+            },
+            'txnstat': {
+                'num_transactions': num_txns,
+                'unique_addresses': unique_addrs,
+                'value_transferred': value_transferred,
+                'average_gas_price': avg_gas_price,
+                'total_gas_used': total_gas_used,
+                'successful_txns': successful_txns,
+            },
             'news': news,
             'date': date,
         }

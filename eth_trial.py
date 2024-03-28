@@ -24,6 +24,14 @@ def llm(prompt: str, model: Model):
         import sys
         sys.exit(1)
 
+def debug_print(s, response=None, title=''):
+    print(f'\n*** START {title} ***')
+    print(s)
+    if response is not None:
+        print(f'*** {title} RESPONSE ***')
+        print(response)
+    print(f'*** END {title} ***\n')
+
 def eth_run(env, base_prompt, memory, starting_state, args):
     to_print = args.to_print
     max_steps = args.max_steps
@@ -35,14 +43,15 @@ def eth_run(env, base_prompt, memory, starting_state, args):
         env_history = EnvironmentHistory(base_prompt, starting_state, memory, [], args)
     if to_print:
         print_state = {k: v for k, v in starting_state.items()}
-        print(f'Init state: {print_state}')
+        debug_print(print_state, None, 'INIT STATE')
     cur_step = 0
     irrs = []
     while cur_step < max_steps:
         use_news = args.use_news
         use_reflection = args.use_reflection
-        news_s, price_s, reflection_s, template_s = env_history.get_prompt()
+        price_s, news_s, reflection_s, template_s = env_history.get_prompt()
 
+        onchain_analysis = llm(price_s, model=model).strip()
         if use_news:
             news_analysis = llm(news_s, model=model).strip()
         else:
@@ -51,10 +60,9 @@ def eth_run(env, base_prompt, memory, starting_state, args):
             reflection = llm(reflection_s, model=model).strip()
         else:
             reflection = 'N/A'
-        onchain_analysis = llm(price_s, model=model).strip()
-        trader_prompt = template_s.format(news_analysis, onchain_analysis, reflection)
-
+        trader_prompt = template_s.format(onchain_analysis, news_analysis, reflection)
         action = llm(trader_prompt, model=model).strip()
+
         state, reward, done, info = env.step(action)
         raw_action = info['raw_action']
         actual_action = f"{info['actual_action']:.1f}"
@@ -63,20 +71,24 @@ def eth_run(env, base_prompt, memory, starting_state, args):
         env_history.add("state", state)
         irrs.append(state['today_roi'])
         if to_print:
+            print(f"********* START STEP {cur_step} *********")
+            debug_print(price_s, onchain_analysis, 'ONCHAIN ANALYST')
+            debug_print(news_s, news_analysis, 'NEWS ANALYST')
+            debug_print(reflection_s, reflection, 'REFLECTION ANALYST')
+            debug_print(trader_prompt, action, 'TRADER')
             print_state = {k: v for k, v in state.items() if k != 'news'}
-            print(f'Action: {actual_action}')
-            print(f'Reasoning: {raw_action}')
-            print(f'State: {print_state}')
+            debug_print(actual_action, None, 'ACTUAL ACTION')
+            debug_print(print_state, None, 'STATE')
         if done:
             break
         cur_step += 1
         time.sleep(1)
     roi = state['roi']
     irrs = np.array(irrs) * 100
-    month_irr_mean = np.mean(irrs)
-    month_irr_std = np.std(irrs)
-    month_risk_free_rate = 0.01 * 100  # e.g., US treasury bond
-    sharp_ratio = (month_irr_mean - month_risk_free_rate) / month_irr_std
+    irr_mean = np.mean(irrs)
+    irr_std = np.std(irrs)
+    risk_free_rate = 0  # as same sociodojo
+    sharp_ratio = (irr_mean - risk_free_rate) / irr_std
     print(f'FINAL irr: {roi*100:.2f}, sharp ratio: {sharp_ratio:.2f}')
     is_success = roi > 0.1 # modify sucess condition
     return env_history, is_success

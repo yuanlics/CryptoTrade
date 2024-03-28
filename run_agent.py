@@ -20,7 +20,7 @@ def get_args():
     parser.add_argument("--starting_date", type=str, default='2023-08-01', help="The starting date for the environment")
     # parser.add_argument("--starting_date", type=str, default='2024-01-01', help="The starting date for the environment")
     parser.add_argument("--ending_date", type=str, default='2024-02-01', help="The ending date for the environment")
-    parser.add_argument("--window", type=int, default=7, help="look back window size for prompt")
+    parser.add_argument("--window", type=int, default=3, help="look back window size for prompt")
     parser.add_argument("--use_memory", action='store_true', help="Allow the Agent to use memory for reflexion")
     parser.add_argument("--use_tech", type=int, default=1, help="Prompt +tech_signal")  # part of onchain analyst
     parser.add_argument("--use_txnstat", type=int, default=1, help="Prompt +txn_stat")  # part of onchain analyst

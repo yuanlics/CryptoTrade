@@ -2,10 +2,10 @@ import os
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--gpu", type=str, default='5')
-parser.add_argument("--start_ymd", type=str, default='2024-1-1')  # inclusive
-parser.add_argument("--end_ymd", type=str, default='2024-1-10')  # inclusive
+parser.add_argument("--start_ymd", type=str, default='2023-8-1')  # inclusive
+parser.add_argument("--end_ymd", type=str, default='2023-8-31')  # inclusive
 args = parser.parse_args()
-# args = parser.parse_args([])
+# args = parser.parse_args('--gpu 0 --start_ymd 2023-8-1 --end_ymd 2023-8-31'.split(' '))
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
 import json
@@ -18,7 +18,7 @@ import time
 from datetime import date, timedelta
 
 
-RAW_DIR = 'data/gnews_raw'  # 1216 articles in 2024-01
+RAW_DIR = 'data/ethereum_202301_202308'  # 1216 articles in 2024-01
 OUTPUT_DIR = 'data/gnews'
 NEWS_TIME_FMT = "%a, %d %b %Y %H:%M:%S %Z"
 MAX_TOKENS = 256
@@ -91,6 +91,7 @@ def get_raw_file_names(start_ymd, end_ymd):
     start_date = datetime.strptime(start_ymd, '%Y-%m-%d')
     end_date = datetime.strptime(end_ymd, '%Y-%m-%d')
     delta = end_date - start_date
+    raw_file_names = []
     for i in range(delta.days + 1):
         date = start_date + timedelta(days=i)
         year, month, day = date.year, date.month, date.day

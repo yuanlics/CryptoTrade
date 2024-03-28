@@ -21,7 +21,8 @@ strategies = ['SMA', 'MACD']
 # strategies = ['SMA', 'MACD', 'SLMA', 'BollingerBands', 'buy_and_hold', 'optimal', 'LSTM', 'Multimodal']
 sma_periods = [5, 10, 15, 20, 30]
 # dates = ['2022-02-01','2023-02-01', '2024-02-01']
-dates = ['2023-12-01','2024-01-01', '2024-02-01']
+dates = ['2023-02-01','2023-08-01', '2024-02-01']
+# dates = ['2023-12-01','2024-01-01', '2024-02-01']
 VAL_START, VAL_END = dates[-3], dates[-2]
 TEST_START, TEST_END = dates[-2], dates[-1]
 RATIO = 0.5 # txn amount ratio
@@ -48,7 +49,7 @@ for mi in range(len(dates)-1):
     starting_date = dates[mi]
     ending_date = dates[mi+1]
     y, m, _ = starting_date.split('-')
-    df_m = df[(df['date'] >= starting_date) & (df['date'] < ending_date)]
+    df_m = df[(df['date'] >= starting_date) & (df['date'] <= ending_date)]
     print(f'{starting_date} to {ending_date} length:', len(df_m))
     stat = [df_m.iloc[0]['open'], df_m['open'].max(), df_m['open'].min(), df_m.iloc[-1]['open']]
     print('open, max, min, close:', [f'{s:.2f}' for s in stat])
@@ -211,8 +212,6 @@ def run_strategy(strategy, sargs):
 
     starting_net_worth = state['net_worth']
     irrs = []
-    previous_month = int(sargs['starting_date'].split('-')[1])
-    month_starting_net_worth = state['net_worth']
     previous_signal = None  # Track the previous day signal
     previous_net_worth = starting_net_worth
     # Iterate through each row in the DataFrame to simulate trading
@@ -225,10 +224,6 @@ def run_strategy(strategy, sargs):
         y, m, d = date.year, date.month, date.day
         irrs.append((net_worth / previous_net_worth) - 1)
         previous_net_worth = net_worth
-        # if previous_month != m:
-        #     irrs.append((net_worth / month_starting_net_worth) - 1)
-        #     month_starting_net_worth = net_worth
-        #     previous_month = m
         if done:
             break
 
@@ -344,33 +339,26 @@ def run_strategy(strategy, sargs):
     irrs = np.array(irrs) * 100
     irr_mean = np.mean(irrs)
     irr_std = np.std(irrs)
-    month_risk_free_rate = 0.01 * 100  # e.g., US treasury bond
+    risk_free_rate = 0  # same as sociodojo
     result = {
         'total_irr': total_irr,
-        'irr_mean': irr_mean,
-        'irr_std': irr_std,
-        'sharp_ratio': (irr_mean - month_risk_free_rate) / irr_std,
+        'sharp_ratio': (irr_mean - risk_free_rate) / irr_std,
     }
-    result_str = f'Total IRR: {total_irr*100:.2f}%, Month Mean: {irr_mean:.2f}%, Month Std: {irr_std:.2f}%, Sharp Ratio: {result["sharp_ratio"]:.2f}'
+    result_str = f'Total IRR: {total_irr*100:.2f} %, Sharp Ratio: {result["sharp_ratio"]:.2f}'
     print(result_str)
     
 
-strategy = 'LSTM'
-print(strategy)
-run_strategy(strategy, {'ratio': RATIO, 'starting_date': VAL_START, 'ending_date': VAL_END})
+# strategy = 'LSTM'
+# print(strategy)
+# run_strategy(strategy, {'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END})
+
 
 # strategy = 'optimal'
-# print(strategy)
-# run_strategy(strategy, {'starting_date': VAL_START, 'ending_date': VAL_END})
-
 # print(strategy)
 # run_strategy(strategy, {'starting_date': TEST_START, 'ending_date': TEST_END})
 
 
 # strategy = 'buy_and_hold'
-# print(strategy)
-# run_strategy(strategy, {'starting_date': VAL_START, 'ending_date': VAL_END})
-
 # print(strategy)
 # run_strategy(strategy, {'starting_date': TEST_START, 'ending_date': TEST_END})
 
@@ -381,44 +369,43 @@ run_strategy(strategy, {'ratio': RATIO, 'starting_date': VAL_START, 'ending_date
 #     print(f'{strategy}, Period: {period}')
 #     run_strategy(strategy, sargs)
 
-# period = 30
+# period = 20
 # print(f'{strategy}, Period: {period}')
 # sargs = {'period': period, 'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END}
 # run_strategy(strategy, sargs)
 
 
 # strategy = 'SLMA'
-# # for i in range(len(sma_periods)-1):
-# #     for j in range(i+1, len(sma_periods)):
-# #         short = f'SMA_{sma_periods[i]}'
-# #         long = f'SMA_{sma_periods[j]}'
-# #         sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': VAL_START, 'ending_date': VAL_END}
-# #         print(f'{strategy}, Short: {short}, Long: {long}')
-# #         run_strategy(strategy, sargs)
+# for i in range(len(sma_periods)-1):
+#     for j in range(i+1, len(sma_periods)):
+#         short = f'SMA_{sma_periods[i]}'
+#         long = f'SMA_{sma_periods[j]}'
+#         sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': VAL_START, 'ending_date': VAL_END}
+#         print(f'{strategy}, Short: {short}, Long: {long}')
+#         run_strategy(strategy, sargs)
 
-# short, long = 'SMA_20', 'SMA_30'
+strategy = 'SLMA'
+for i in range(len(sma_periods)-1):
+    for j in range(i+1, len(sma_periods)):
+        short = f'SMA_{sma_periods[i]}'
+        long = f'SMA_{sma_periods[j]}'
+        sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': TEST_START, 'ending_date': TEST_END}
+        print(f'{strategy}, Short: {short}, Long: {long}')
+        run_strategy(strategy, sargs)
+
+# short, long = 'SMA_15', 'SMA_30'
 # sargs = {'ratio': RATIO, 'short': short, 'long': long, 'starting_date': TEST_START, 'ending_date': TEST_END}
 # print(f'{strategy}, Short: {short}, Long: {long}')
 # run_strategy(strategy, sargs)
 
 
 # strategy = 'MACD'
-# sargs = {'ratio': RATIO, 'starting_date': VAL_START, 'ending_date': VAL_END}
-# print(f'{strategy}')
-# run_strategy(strategy, sargs)
-
 # sargs = {'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END}
 # print(f'{strategy}')
 # run_strategy(strategy, sargs)
 
 
 # strategy = 'BollingerBands'
-# period = 20
-# multiplier = 2
-# sargs = {'period': period, 'multiplier': multiplier, 'ratio': RATIO, 'starting_date': VAL_START, 'ending_date': VAL_END}
-# print(f'{strategy}, Period: {period}, Multiplier: {multiplier}')
-# run_strategy(strategy, sargs)
-
 # period = 20
 # multiplier = 2
 # sargs = {'period': period, 'multiplier': multiplier, 'ratio': RATIO, 'starting_date': TEST_START, 'ending_date': TEST_END}

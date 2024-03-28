@@ -23,42 +23,43 @@ class EnvironmentHistory:
         use_tech = self.args.use_tech
         use_txnstat = self.args.use_txnstat
 
-        state = self._history[-1]['value']
-        news_s = f"You are a cryptocurrency trading analyst. Your news summaries: {state['news']}. Analyze the news and estimate the market trend accordingly."
-
         price_s = 'You are a cryptocurrency trading analyst. The recent price and auxiliary information is given in chronological order below:\n'
         for i, item in enumerate(self._history[-window:]):
             if item['label'] == 'state':
                 state = item['value']
                 state_log = f'Open price: {state["open"]:.2f}'
                 if use_txnstat:
-                    state_log += f', number of transactions: {state["num_txns"]}'
+                    txnstat_dict = state['txnstat']
+                    for k, v in txnstat_dict.items():
+                        state_log += f', {k}: {v}'
                 if use_tech:
-                    # state_log += f', MACD: {state["macd"]:.2f}, MACD Signal Line: {state["macd_signal_line"]:.2f}, MACD signal: {state["macd_signal"]}'
-                    state_log += f', MACD signal: {state["macd_signal"]}'
-                    # state_log += f', SMA5: {state["ma5"]:.2f}, SMA20: {state["ma20"]:.2f}, MA Crossover signal: {state["mac_5_20_signal"]}'
-                    state_log += f', Short-Long MA signal: {state["mac_5_20_signal"]}'
+                    tech_dict = state['technical']
+                    for k, v in tech_dict.items():
+                        state_log += f', {k}: {v}'
                 price_s += state_log + '\n'
         price_s += f'Analyze the recent information and estimate the market trend accordingly.'
 
+        state = self._history[-1]['value']
+        news_s = f"You are a cryptocurrency trading analyst. You are required to analyze the following news summaries: {state['news']}. Analyze the news and estimate the market trend accordingly."
+
         reflection_s = 'You are a cryptocurrency trading analyst. Your analysis and action history is given in chronological order:\n'
-        for i, item in enumerate(self._history[-window:]):
+        for i, item in enumerate(self._history[-window * 3:]):
             if item['label'] == 'prompt':
-                reflection_s += f'Prompt: {item["value"]}\n'
+                reflection_s += f'PROMPT:\n{item["value"]}\n'
             elif item['label'] == 'action':
-                reflection_s += f'Action: {item["value"]}\n'
+                reflection_s += f'ACTION:\n{item["value"]}\n'
             elif item['label'] == 'state':
-                reflection_s += f'Return: {item["value"]["today_roi"]}\n'
+                reflection_s += f'DAILY RETURN:\n{item["value"]["today_roi"]}\n'
         if len(self._history[-window:]) == 0:
             reflection_s += 'N/A.\n'
-        reflection_s += f'Reflect on your recent performance and give advice on your future decision making, e.g., identify what information is currently more important.'
+        reflection_s += f'Reflect on your recent performance and instruct your future trades from a high level. Identify what information is currently more important.'
 
         base_prompt = 'You are an experienced crypto currency trader and you are trying to maximize your overall profit by trading ETH. In each day, you will make an action to buy or sell ETH. You will start with 1 million dollars, half in cash and half in ETH. You are assisted by a few analysts and need to decide the final action\n'
         # 'A small transaction fee is charged based on the transaction amount, so frequent large transactions are penalized.'
-        template_s = base_prompt + 'News analyst report: {}\n' + 'On-chain analyst report: {}\n' + 'Reflection analyst report: {}\n'
+        template_s = base_prompt + 'ON-CHAIN ANALYST REPORT: {}\n\n' + 'NEWS ANALYST REPORT: {}\n\n' + 'REFLECTION ANALYST REPORT: {}\n\n'
         template_s += 'Start your response with your reasoning over the given context. Wisely select the information, conclude a clear market trend, and avoid always being conservative. When the trend is upwards, it is profitable to buy ETH, and vice versa. Finally, suggest a 1-decimal float action in the range of [-1,1]. When the trend is bullish and upwards, you need to buy ETH with a negative value. When the trend is bearish and downwards, you need to sell ETH with a positive value. Your action is based on your prediction and confidence on the market trend, where a larger absolute value indicates a higher confidence on your trend prediction. Examples are: -0.3 (buy with 30% cash), 0.5 (sell 50% ETH), and so on. Make sure to directly give the value (could be negative) at the very end without any explanation.'
 
-        return news_s, price_s, reflection_s, template_s
+        return price_s, news_s, reflection_s, template_s
 
 def _get_base_query(base_query: str, memory: List[str]) -> str:
     query = base_query
