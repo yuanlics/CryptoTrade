@@ -16,9 +16,8 @@ def get_args():
     parser.add_argument("--to_print", type=int, default=1, help="Print debug info")
 
     parser.add_argument("--starting_date", type=str, default='2023-08-01', help="The starting date for the environment")
-    # parser.add_argument("--starting_date", type=str, default='2024-01-01', help="The starting date for the environment")
     parser.add_argument("--ending_date", type=str, default='2024-02-01', help="The ending date for the environment")
-    parser.add_argument("--window", type=int, default=3, help="look back window size for prompt")
+    parser.add_argument("--window", type=int, default=7, help="look back window size for prompt")
     parser.add_argument("--use_memory", action='store_true', help="Allow the Agent to use memory for reflexion")
     parser.add_argument("--use_tech", type=int, default=1, help="Prompt +tech_signal")  # part of onchain analyst
     parser.add_argument("--use_txnstat", type=int, default=1, help="Prompt +txn_stat")  # part of onchain analyst
@@ -30,11 +29,12 @@ def get_args():
     parser.add_argument("--model", type=str, default='gpt-3.5-turbo', help="gpt-3.5-turbo, gpt-4-turbo-preview")
 
     # args = parser.parse_args()
-    debug_args = '--use_news 1 --use_tech 1 --use_txnstat 1 --use_reflection 1'.split(' ')
+    # debug_args = '--use_news 1 --use_tech 1 --use_txnstat 1 --use_reflection 1'.split(' ')
+    # debug_args = '--use_news 1 --use_tech 1 --use_txnstat 1 --use_reflection 0'.split(' ')
     # debug_args = '--use_news 0 --use_tech 0 --use_txnstat 0 --use_reflection 0'.split(' ')
-    # debug_args = '--use_news 1 --use_tech 0 --use_txnstat 0 --use_reflection 0'.split(' ')
     # debug_args = '--use_news 0 --use_tech 1 --use_txnstat 0 --use_reflection 0'.split(' ')
     # debug_args = '--use_news 0 --use_tech 0 --use_txnstat 1 --use_reflection 0'.split(' ')
+    debug_args = '--use_news 1 --use_tech 0 --use_txnstat 0 --use_reflection 0'.split(' ')
     # debug_args = '--use_news 0 --use_tech 0 --use_txnstat 0 --use_reflection 1'.split(' ')
     args = parser.parse_args(debug_args)
 

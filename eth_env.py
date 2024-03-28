@@ -64,6 +64,19 @@ class ETHTradingEnv:
         ma10 = next_day['SMA_10']
         ma15 = next_day['SMA_15']
         ma20 = next_day['SMA_20']
+        sma = next_day[f'SMA_20']
+        sd = next_day[f'STD_20']
+        
+        multiplier = 2
+        upper_band = sma + (sd * multiplier)
+        lower_band = sma - (sd * multiplier)
+
+        boll_signal = 'hold'
+        if next_open_price < lower_band:
+            boll_signal = 'buy'
+        elif next_open_price > upper_band:
+            boll_signal = 'sell'
+
         slma_signal = 'hold'
         if ma15 > ma20:
             slma_signal = 'sell'
@@ -77,8 +90,6 @@ class ETHTradingEnv:
             macd_signal = 'buy'
         elif macd > macd_signal_line:
             macd_signal = 'sell'
-
-
 
         # today's txn stats
         txn_stat = self.txn_stat[self.txn_stat['date'] == parsed_time]
@@ -114,6 +125,7 @@ class ETHTradingEnv:
             'technical': {
                 'short_long_ma_signal': slma_signal,
                 'macd_signal': macd_signal,
+                'bollinger_bands_signal': boll_signal,
             },
             'txnstat': {
                 'num_transactions': num_txns,
